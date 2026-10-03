@@ -1,0 +1,225 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* --------------------------------------------------------------------------
+   Palette
+
+   One accent — a hazard amber — carries the brand. Red is reserved for the
+   "this gets blocked" case and never used decoratively. Everything else is a
+   neutral, which keeps both themes calm at high contrast.
+
+   Each token has a light and a dark value chosen to clear WCAG AA against its
+   own background; `--si-accent` is the one that gets used for text.
+   -------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: light;
+
+  --si-bg: #fafaf9;
+  --si-surface: #ffffff;
+  --si-surface-2: #f5f5f4;
+  --si-ink: #16161a;
+  --si-ink-soft: #3f3f46;
+  --si-muted: #6b6b74;
+  --si-line: #e4e4e2;
+  --si-line-strong: #c9c9c6;
+
+  --si-accent: #b45309;
+  --si-accent-bright: #f59e0b;
+  --si-accent-wash: #fef3c7;
+  --si-danger: #b91c1c;
+  --si-danger-wash: #fee2e2;
+  --si-ok: #15803d;
+
+  --si-term-bg: #121214;
+  --si-term-ink: #e7e5e4;
+  --si-term-muted: #8a8a93;
+  --si-term-accent: #fbbf24;
+  --si-term-danger: #fb7185;
+  --si-term-ok: #4ade80;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --si-bg: #0a0a0b;
+  --si-surface: #131316;
+  --si-surface-2: #1b1b1f;
+  --si-ink: #f5f5f4;
+  --si-ink-soft: #d4d4d2;
+  --si-muted: #97979f;
+  --si-line: #26262a;
+  --si-line-strong: #3d3d42;
+
+  --si-accent: #fbbf24;
+  --si-accent-bright: #fbbf24;
+  --si-accent-wash: #2a1f05;
+  --si-danger: #fb7185;
+  --si-danger-wash: #2d0f14;
+  --si-ok: #4ade80;
+
+  --si-term-bg: #08080a;
+  --si-term-ink: #e7e5e4;
+  --si-term-muted: #8a8a93;
+  --si-term-accent: #fbbf24;
+  --si-term-danger: #fb7185;
+  --si-term-ok: #4ade80;
+}
+
+@theme inline {
+  --color-bg: var(--si-bg);
+  --color-surface: var(--si-surface);
+  --color-surface-2: var(--si-surface-2);
+  --color-ink: var(--si-ink);
+  --color-ink-soft: var(--si-ink-soft);
+  --color-muted: var(--si-muted);
+  --color-line: var(--si-line);
+  --color-line-strong: var(--si-line-strong);
+  --color-accent: var(--si-accent);
+  --color-accent-bright: var(--si-accent-bright);
+  --color-accent-wash: var(--si-accent-wash);
+  --color-danger: var(--si-danger);
+  --color-danger-wash: var(--si-danger-wash);
+  --color-ok: var(--si-ok);
+
+  --color-term-bg: var(--si-term-bg);
+  --color-term-ink: var(--si-term-ink);
+  --color-term-muted: var(--si-term-muted);
+  --color-term-accent: var(--si-term-accent);
+  --color-term-danger: var(--si-term-danger);
+  --color-term-ok: var(--si-term-ok);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, 'SFMono-Regular', monospace;
+}
+
+/* --------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+
+@layer base {
+  * {
+    border-color: var(--si-line);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    /* Sticky header height + breathing room, so anchors don't land under it. */
+    scroll-padding-top: 5.5rem;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--si-bg);
+    color: var(--si-ink);
+    font-family: var(--font-sans);
+    /* Guards the 360px requirement for any long unbroken string. */
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background-color: var(--si-accent);
+    color: var(--si-bg);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--si-accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* The terminal and code blocks scroll internally, never the page. */
+  pre {
+    overflow-x: auto;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Motion
+
+   Anything decorative collapses to a no-op for visitors who ask for less of
+   it. GSAP guards its own timelines, but the CSS side needs the same rule.
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Shiki
+
+   Shiki renders both themes into CSS custom properties so one server-generated
+   string serves light and dark. These rules pick the right variable; without
+   them every token would fall back to its light value in dark mode.
+   -------------------------------------------------------------------------- */
+
+@layer components {
+  .code-scroll .shiki,
+  .code-scroll .shiki span {
+    color: var(--shiki-light);
+  }
+
+  .code-scroll .shiki {
+    background-color: transparent !important;
+  }
+
+  .dark .code-scroll .shiki,
+  .dark .code-scroll .shiki span {
+    color: var(--shiki-dark);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Small helpers used across sections
+   -------------------------------------------------------------------------- */
+
+@utility shell {
+  width: 100%;
+  margin-inline: auto;
+  max-width: 76rem;
+  padding-inline: 1.25rem;
+
+  @media (width >= 48rem) {
+    padding-inline: 2rem;
+  }
+}
+
+@utility hairline {
+  background-image: linear-gradient(
+    to right,
+    transparent,
+    var(--si-line-strong) 15%,
+    var(--si-line-strong) 85%,
+    transparent
+  );
+  height: 1px;
+}
+
+/* Faint dot grid, used behind the hero. Reads as terminal texture. */
+@utility dot-grid {
+  background-image: radial-gradient(var(--si-line-strong) 1px, transparent 1px);
+  background-size: 22px 22px;
+}

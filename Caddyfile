@@ -1,0 +1,46 @@
+# Serves the static export in /srv on port 3000.
+#
+# No TLS here: this is meant to sit behind a reverse proxy or a load balancer
+# that terminates it. Add `example.com { ... }` and Caddy will handle
+# certificates itself if you would rather it did.
+
+:3000 {
+	root * /srv
+
+	# Compression. Caddy picks zstd when the client offers it, gzip otherwise.
+	encode zstd gzip
+
+	header {
+		# Block MIME sniffing, including for the JSON/RSC payloads.
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options DENY
+		# Do not advertise the server version.
+		-Server
+	}
+
+	# Content-hashed build output can be cached forever.
+	@immutable path /_next/static/*
+	header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+	# Everything else must be revalidated so a new deploy is picked up.
+	@revalidate {
+		path *.html /
+		path /robots.txt /sitemap.xml
+	}
+	header @revalidate Cache-Control "public, max-age=0, must-revalidate"
+
+	# `trailingSlash: true` means each route is a directory with an index.html,
+	# so try the directory index before giving up.
+	try_files {path} {path}/ {path}/index.html {err.NOT_FOUND}
+
+	file_server
+
+	# Serve Next's exported 404 page for unmatched routes. Going through
+	# {err.NOT_FOUND} rather than listing /404.html as a try_files fallback is
+	# what keeps the response a real 404 instead of a 200 with error content.
+	handle_errors {
+		rewrite * /404.html
+		file_server
+	}
+}

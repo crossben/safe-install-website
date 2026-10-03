@@ -1,5 +1,4 @@
 import { en } from '@/content/en';
-import { license } from '@/content/facts';
 import { HeroTerminal } from '@/components/HeroTerminal';
 import { HighlightedTabs } from '@/components/HighlightedTabs';
 import { CopyButton } from '@/components/ui/CopyButton';
@@ -10,7 +9,10 @@ export function Hero() {
   return (
     <section id="top" className="relative overflow-hidden">
       {/* Terminal-flavoured backdrop: dot grid plus an accent bloom. */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 dot-grid opacity-40" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 dot-grid opacity-40"
+      />
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -top-40 left-1/2 h-[32rem] w-[52rem] -translate-x-1/2 rounded-full bg-accent/10 blur-3xl"
@@ -18,13 +20,8 @@ export function Hero() {
 
       <div className="shell relative pt-14 pb-16 sm:pt-20 sm:pb-24">
         <div className="grid gap-12 lg:grid-cols-12 lg:gap-10">
-          <div className="lg:col-span-5">
-            <p className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 font-mono text-[11px] text-muted">
-              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent" />
-              {license.value} · v0.1.0 in progress
-            </p>
-
-            <h1 className="mt-6 text-4xl leading-[1.08] font-semibold tracking-tight text-balance sm:text-5xl lg:text-[3.25rem]">
+          <div className="min-w-0 lg:col-span-5">
+            <h1 className="text-4xl leading-[1.08] font-semibold tracking-tight text-balance sm:text-5xl lg:text-[3.25rem]">
               {hero.promise}
             </h1>
 
@@ -58,7 +55,7 @@ export function Hero() {
             </div>
           </div>
 
-          <div className="lg:col-span-7">
+          <div className="min-w-0 lg:col-span-7">
             <HeroTerminal title={hero.terminalTitle} lines={hero.terminalLines} />
             <p className="mt-3 font-mono text-[11px] text-muted">{hero.footnote}</p>
           </div>
@@ -66,9 +63,7 @@ export function Hero() {
 
         <div className="mt-16 border-t border-line pt-10">
           <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3">
-            <h2 className="font-mono text-xs tracking-[0.18em] text-muted uppercase">
-              Install
-            </h2>
+            <h2 className="font-mono text-xs tracking-[0.18em] text-muted uppercase">Install</h2>
             <p className="text-sm text-muted">No runtime required. One static binary.</p>
           </div>
           <HighlightedTabs

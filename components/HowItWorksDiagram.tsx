@@ -102,9 +102,7 @@ export function HowItWorksDiagram({ steps }: { steps: readonly Step[] }) {
           </span>
 
           <div className="lg:pr-2">
-            <h3 className="font-mono text-sm font-medium tracking-tight text-ink">
-              {step.title}
-            </h3>
+            <h3 className="font-mono text-sm font-medium tracking-tight text-ink">{step.title}</h3>
             <p className="mt-2 text-sm leading-relaxed text-muted">{step.body}</p>
           </div>
         </li>

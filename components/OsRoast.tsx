@@ -41,10 +41,7 @@ export function OsRoast({ copy }: { copy: MonitorCopy }) {
   const roast: Roast | null = os ? copy.roasts[os] : null;
 
   return (
-    <div
-      aria-live="polite"
-      className="overflow-hidden rounded-xl border border-line bg-surface"
-    >
+    <div aria-live="polite" className="overflow-hidden rounded-xl border border-line bg-surface">
       <div className="flex items-start gap-4 p-5 sm:p-7">
         <span
           aria-hidden="true"
@@ -71,9 +68,7 @@ export function OsRoast({ copy }: { copy: MonitorCopy }) {
                 ))}
               </ul>
 
-              {roast.cta ? (
-                <p className="mt-1 font-mono text-sm text-ink">{roast.cta}</p>
-              ) : null}
+              {roast.cta ? <p className="mt-1 font-mono text-sm text-ink">{roast.cta}</p> : null}
             </div>
           ) : null}
         </div>

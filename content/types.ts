@@ -106,7 +106,10 @@ export type SiteContent = {
     readonly subline: string;
     readonly primaryCta: Cta;
     readonly secondaryCta: Cta;
-    readonly installTabs: readonly { readonly os: string; readonly samples: readonly CodeSample[] }[];
+    readonly installTabs: readonly {
+      readonly os: string;
+      readonly samples: readonly CodeSample[];
+    }[];
     readonly terminalTitle: string;
     readonly terminalLines: readonly TerminalLine[];
     readonly footnote: string;
@@ -133,6 +136,14 @@ export type SiteContent = {
     readonly severities: readonly SeverityCopy[];
     readonly scoringNote: string;
     readonly explainNote: string;
+    readonly releaseAgeGate: {
+      readonly heading: string;
+      readonly body: string;
+      readonly native: string;
+      readonly fallback: string;
+      readonly override: string;
+      readonly credit: string;
+    };
   };
   readonly packageManagers: {
     readonly eyebrow: string;
@@ -160,8 +171,8 @@ export type SiteContent = {
     readonly howHeading: string;
     readonly backendBody: string;
     readonly signalsHeading: string;
+    readonly actionHeading: string;
     readonly actionBody: string;
-    readonly signals: readonly string[];
     readonly copy: MonitorCopy;
   };
   readonly ci: {
@@ -184,6 +195,11 @@ export type SiteContent = {
   };
   readonly footer: {
     readonly tagline: string;
+    readonly byline: {
+      readonly label: string;
+      readonly name: string;
+      readonly url: string;
+    };
     readonly securityHeading: string;
     readonly securityBody: string;
     readonly telemetryBody: string;

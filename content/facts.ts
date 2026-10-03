@@ -45,7 +45,8 @@ const PLAN = 'content/sources/plan.md' as const;
 /** Severity as the plan describes it. `block` means always-block regardless of score. */
 export type Severity = 'low' | 'medium' | 'high' | 'block' | 'advisory';
 
-export type RuleFamily = 'scripts' | 'recency' | 'popularity' | 'integrity' | 'maintenance' | 'vulns';
+export type RuleFamily =
+  'scripts' | 'recency' | 'popularity' | 'integrity' | 'maintenance' | 'vulns';
 
 export type Rule = {
   readonly id: string;
@@ -101,13 +102,11 @@ export const repo = fact('github.com/crossben/safe-install', {
   quote: 'Module path:\n`github.com/crossben/safe-install`.',
 });
 
-export const repoLayout = fact(
-  'the Go CLI lives in `app/` and the website in `website/`', {
-    section: '§5 Architecture',
-    file: PLAN,
-    quote: 'the Go CLI lives in `app/` and the website in `website/`. Each is its own',
-  },
-);
+export const repoLayout = fact('the Go CLI lives in `app/` and the website in `website/`', {
+  section: '§5 Architecture',
+  file: PLAN,
+  quote: 'the Go CLI lives in `app/` and the website in `website/`. Each is its own',
+});
 
 export const goRationale = fact(
   'Static single binary per OS/arch, trivial cross-compile, fast concurrent HTTP, mature security-tooling ecosystem (osv-scanner, trivy, grype are Go).',
@@ -184,11 +183,31 @@ export const coreIdea = fact(
 /** The five steps of §2, verbatim. */
 export const workflowSteps = fact(
   [
-    { id: 'analyze', label: 'Analyze', detail: 'lockfile → full tree → registry metadata → risk score per package' },
-    { id: 'install', label: 'Install', detail: 'package manager with ALL lifecycle scripts disabled' },
-    { id: 'inspect', label: 'Inspect', detail: 'list every package that wants to run a script; show + flag the script' },
-    { id: 'approve', label: 'Approve', detail: 'user (or policy file) approves per package@version' },
-    { id: 'run', label: 'Run', detail: 'execute approved scripts only   [Linux: optionally under the runtime monitor]' },
+    {
+      id: 'analyze',
+      label: 'Analyze',
+      detail: 'lockfile → full tree → registry metadata → risk score per package',
+    },
+    {
+      id: 'install',
+      label: 'Install',
+      detail: 'package manager with ALL lifecycle scripts disabled',
+    },
+    {
+      id: 'inspect',
+      label: 'Inspect',
+      detail: 'list every package that wants to run a script; show + flag the script',
+    },
+    {
+      id: 'approve',
+      label: 'Approve',
+      detail: 'user (or policy file) approves per package@version',
+    },
+    {
+      id: 'run',
+      label: 'Run',
+      detail: 'execute approved scripts only   [Linux: optionally under the runtime monitor]',
+    },
   ] as const,
   {
     section: '§2 Core idea',
@@ -224,7 +243,8 @@ export const packageManagers: readonly PackageManager[] = [
     source: {
       section: '§4 Package managers supported in v1',
       file: PLAN,
-      quote: '| pnpm | `pnpm-lock.yaml` (v6–v9) | `pnpm install --ignore-scripts` | `pnpm rebuild <pkg>` |',
+      quote:
+        '| pnpm | `pnpm-lock.yaml` (v6–v9) | `pnpm install --ignore-scripts` | `pnpm rebuild <pkg>` |',
     },
   },
   {
@@ -262,7 +282,8 @@ export const packageManagers: readonly PackageManager[] = [
     source: {
       section: '§4 Package managers supported in v1',
       file: PLAN,
-      quote: '| bun | `bun.lock` (text, ≥1.2) | `bun install --ignore-scripts` | `bun pm trust <pkg>` |',
+      quote:
+        '| bun | `bun.lock` (text, ≥1.2) | `bun install --ignore-scripts` | `bun pm trust <pkg>` |',
     },
   },
 ];
@@ -287,7 +308,13 @@ function rule(
   severity: Severity,
   quote: string,
 ): Rule {
-  return { id, family, signal, severity, source: { section: `§6 Risk rules (${id})`, file: PLAN, quote } };
+  return {
+    id,
+    family,
+    signal,
+    severity,
+    source: { section: `§6 Risk rules (${id})`, file: PLAN, quote },
+  };
 }
 
 export const rules: readonly Rule[] = [
@@ -329,9 +356,9 @@ export const rules: readonly Rule[] = [
   rule(
     'SI-REC-001',
     'recency',
-    'Version published < 72h ago (configurable)',
+    'Version published more recently than `minReleaseAge` (default 72h) and not held back (see §7a)',
     'medium',
-    '| SI-REC-001 | Version published < 72h ago (configurable) | medium |',
+    '| SI-REC-001 | Version published more recently than `minReleaseAge` (default 72h) and not held back (see §7a) | medium |',
   ),
   rule(
     'SI-REC-002',
@@ -405,10 +432,10 @@ export const explainability = fact('every warning says why (rule + evidence)', {
   quote: 'Explainable: every warning says *why* (rule + evidence).',
 });
 
-export const lowNoiseGoal = fact('popular, long-lived packages with known-good scripts don\'t nag', {
+export const lowNoiseGoal = fact("popular, long-lived packages with known-good scripts don't nag", {
   section: '§1 Success criteria',
   file: PLAN,
-  quote: 'Low noise: popular, long-lived packages with known-good scripts don\'t nag.',
+  quote: "Low noise: popular, long-lived packages with known-good scripts don't nag.",
 });
 
 /* -------------------------------------------------------------------------- */
@@ -436,10 +463,16 @@ export const projectPolicyFile = fact('.safe-install.json', {
   quote: '**Project**: `.safe-install.json` committed to the repo, so teams share approvals:',
 });
 
-export const defaultMinPackageAgeHours = fact(72, {
+export const defaultMinReleaseAge = fact('72h', {
   section: '§7 Policy & trust (example policy file)',
   file: PLAN,
-  quote: '"minPackageAgeHours": 72,',
+  quote: '"minReleaseAge": "72h",',
+});
+
+export const minReleaseAgeExclude = fact('["typescript", "@types/*"]', {
+  section: '§7 Policy & trust (example policy file); §7a Release-age gate',
+  file: PLAN,
+  quote: '"minReleaseAgeExclude": ["typescript", "@types/*"],',
 });
 
 export const defaultFailOn = fact('high', {
@@ -451,8 +484,50 @@ export const defaultFailOn = fact('high', {
 export const approvalsPinScriptHash = fact(true, {
   section: '§7 Policy & trust',
   file: PLAN,
+  quote: 'Approvals pin to the **script content hash**, so a changed script needs re-approval',
+});
+
+/* -------------------------------------------------------------------------- */
+/* §7a Release-age gate                                                        */
+/* -------------------------------------------------------------------------- */
+
+export const releaseAgeGate = fact(
+  'resolve to the newest version that is at least minReleaseAge old',
+  {
+    section: '§7a Release-age gate',
+    file: PLAN,
+    quote:
+      '**resolve to the newest version that is at least `minReleaseAge` old**,\nso a freshly compromised release never lands.',
+  },
+);
+
+export const releaseAgeGateInspiredBy = fact('https://github.com/kevinslin/safe-npm (ISC)', {
+  section: '§7a Release-age gate',
+  file: PLAN,
+  quote: 'Inspired by [safe-npm](https://github.com/kevinslin/safe-npm) (ISC):',
+});
+
+export const releaseAgeNativeSettings = fact('npm `--before <date>`, pnpm `minimumReleaseAge`', {
+  section: '§7a Release-age gate — native setting',
+  file: PLAN,
+  quote: '`minimumReleaseAge`; yarn/bun equivalents verified per version in CI). safe-install',
+});
+
+export const releaseAgeFallback = fact(
+  'resolves direct dependencies itself (semver range ∩ age cutoff, newest wins) and pins them',
+  {
+    section: '§7a Release-age gate — Fallback',
+    file: PLAN,
+    quote:
+      'safe-install resolves direct dependencies itself\n  (semver range ∩ age cutoff, newest wins) and pins them',
+  },
+);
+
+export const releaseAgeOverrideFlag = fact('--min-age', {
+  section: '§7a Release-age gate; §8 CLI surface',
+  file: PLAN,
   quote:
-    'Approvals pin to the **script content hash**, so a changed script needs re-approval',
+    '`minReleaseAgeExclude` (glob list) bypasses the gate for trusted fast movers; `--min-age`',
 });
 
 export const examplePolicy = fact(
@@ -461,7 +536,8 @@ export const examplePolicy = fact(
       'esbuild@0.25.x': 'approved',
       sharp: { approvedHash: 'sha256-…', by: 'ben', at: '2026-10-03' },
     },
-    minPackageAgeHours: 72,
+    minReleaseAge: '72h',
+    minReleaseAgeExclude: ['typescript', '@types/*'],
     failOn: 'high',
   },
   {
@@ -535,7 +611,15 @@ export const yarnBerryPnp = fact('supported', {
 });
 
 export const globalFlags = fact(
-  ['--pm', '--yes', '--ci', '--format=text|json|sarif', '--offline', '--registry'] as const,
+  [
+    '--pm',
+    '--yes',
+    '--ci',
+    '--format=text|json|sarif',
+    '--offline',
+    '--registry',
+    '--min-age',
+  ] as const,
   {
     section: '§8 CLI surface',
     file: PLAN,
@@ -567,14 +651,11 @@ export const monitorLinuxOnly = fact(true, {
   quote: 'Not available on macOS/Windows: the CLI says so plainly',
 });
 
-export const monitorBackends = fact(
-  ['eBPF', 'strace'] as const,
-  {
-    section: '§3 Stack — Linux monitor row; §9 Backend',
-    file: PLAN,
-    quote: '`cilium/ebpf` (preferred) with `strace` fallback, `fsnotify`',
-  },
-);
+export const monitorBackends = fact(['eBPF', 'strace'] as const, {
+  section: '§3 Stack — Linux monitor row; §9 Backend',
+  file: PLAN,
+  quote: '`cilium/ebpf` (preferred) with `strace` fallback, `fsnotify`',
+});
 
 export const monitorTracepoints = fact('sys_enter_execve, connect, openat', {
   section: '§9 Linux-only: runtime monitor — Backend',
@@ -660,7 +741,6 @@ export const distribution = fact(
   {
     section: '§3 Stack — Release row; §10 M8',
     file: PLAN,
-    quote:
-      'publishes GitHub Releases, Homebrew tap, Scoop bucket, `.deb`/`.rpm`, checksums',
+    quote: 'publishes GitHub Releases, Homebrew tap, Scoop bucket, `.deb`/`.rpm`, checksums',
   },
 );

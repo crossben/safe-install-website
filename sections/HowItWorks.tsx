@@ -28,8 +28,8 @@ export function HowItWorks() {
           </h3>
           <p className="mt-3 text-sm leading-relaxed text-muted">
             {coreIdea.value} Separating the two is what makes this work everywhere without
-            OS-specific tricks — which is why the runtime monitor at the bottom of this page is
-            the only part that is Linux-only.
+            OS-specific tricks — which is why the runtime monitor at the bottom of this page is the
+            only part that is Linux-only.
           </p>
         </div>
         <div className="rounded-lg border border-line bg-surface p-5">

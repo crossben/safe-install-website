@@ -8,6 +8,8 @@ import { CopyButton } from './CopyButton';
  * `html` is the Shiki output produced by `lib/highlight.ts` in a server
  * component. Shipping it as a string means the highlighter itself never
  * reaches the browser — no grammar bundle, no re-highlighting on toggle.
+ *
+ * The block is dark in both themes; see the Shiki note in `globals.css`.
  */
 export function CodeBlock({
   html,
@@ -21,15 +23,15 @@ export function CodeBlock({
   className?: string;
 }) {
   return (
-    <div
-      className={`group relative overflow-hidden rounded-lg border border-line bg-surface ${className}`}
-    >
+    <div className={`overflow-hidden rounded-lg border border-white/10 bg-term-bg ${className}`}>
       {label ? (
-        <div className="flex items-center justify-between border-b border-line bg-surface-2 px-3 py-1.5">
-          <span className="font-mono text-[11px] tracking-wide text-muted uppercase">{label}</span>
+        <div className="flex items-center justify-between border-b border-white/10 px-3 py-1.5">
+          <span className="font-mono text-[11px] tracking-wide text-term-muted uppercase">
+            {label}
+          </span>
           <CopyButton
             text={code}
-            className="border-transparent px-1.5 py-0.5 hover:border-line"
+            className="border-transparent px-1.5 py-0.5 text-term-muted hover:border-white/20 hover:text-term-accent"
           />
         </div>
       ) : null}

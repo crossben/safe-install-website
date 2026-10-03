@@ -25,13 +25,7 @@ const TONE_CLASS: Record<string, string> = {
  * Under `prefers-reduced-motion: reduce` the tween is never created and the
  * full session renders immediately — the content is identical either way.
  */
-export function HeroTerminal({
-  title,
-  lines,
-}: {
-  title: string;
-  lines: readonly TerminalLine[];
-}) {
+export function HeroTerminal({ title, lines }: { title: string; lines: readonly TerminalLine[] }) {
   const scope = useRef<HTMLDivElement>(null);
   const fullText = lines.map((line) => line.text).join('\n');
   const totalChars = fullText.length;
@@ -46,11 +40,26 @@ export function HeroTerminal({
 
       mm.add('(prefers-reduced-motion: no-preference)', () => {
         const counter = { value: 0 };
+        let lastPaint = 0;
+
         const tween = gsap.to(counter, {
           value: totalChars,
-          duration: Math.min(totalChars * 0.012, 6),
+          // Typing speed is cosmetic, so cap it: a shorter run keeps the main
+          // thread free during the window Lighthouse measures, and the caret
+          // still tracks the text convincingly.
+          duration: Math.min(totalChars * 0.007, 3.5),
           ease: 'none',
-          onUpdate: () => setChars(Math.floor(counter.value)),
+          onUpdate: () => {
+            // GSAP ticks at 60fps; re-rendering React 60 times a second is
+            // wasted work at this granularity. Capping the commit rate at
+            // ~30fps halves it with no visible difference.
+            const now = performance.now();
+            if (now - lastPaint < 32 && counter.value < totalChars) return;
+            lastPaint = now;
+            setChars(Math.floor(counter.value));
+          },
+          // Always land exactly on the final frame.
+          onComplete: () => setChars(totalChars),
         });
         return () => tween.kill();
       });
@@ -90,13 +99,14 @@ export function HeroTerminal({
           <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
           <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
         </span>
-        <span className="ml-1.5 font-mono text-[11px] tracking-wide text-term-muted">
-          {title}
-        </span>
+        <span className="ml-1.5 font-mono text-[11px] tracking-wide text-term-muted">{title}</span>
       </div>
 
       <div className="flex gap-2.5 overflow-x-auto p-4 sm:p-5">
-        <span aria-hidden="true" className="select-none font-mono text-xs leading-[1.7] text-term-muted/60">
+        <span
+          aria-hidden="true"
+          className="select-none font-mono text-xs leading-[1.7] text-term-muted/60"
+        >
           1
         </span>
         <pre className="min-w-0 flex-1 font-mono text-[12.5px] leading-[1.7] whitespace-pre sm:text-[13px]">
@@ -110,7 +120,9 @@ export function HeroTerminal({
             );
           })}
           {!atEnd ? (
-            <span className={`-mb-px inline-block h-[1.1em] w-[0.55em] translate-y-[0.15em] animate-pulse ${TONE_CLASS[currentTone] ?? ''} bg-current`} />
+            <span
+              className={`-mb-px inline-block h-[1.1em] w-[0.55em] translate-y-[0.15em] animate-pulse ${TONE_CLASS[currentTone] ?? ''} bg-current`}
+            />
           ) : null}
         </pre>
       </div>

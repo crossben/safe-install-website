@@ -21,14 +21,9 @@ export async function HighlightedCode({
   );
 
   return (
-    <div className={`flex flex-col gap-3 ${className}`}>
+    <div className={`flex min-w-0 flex-col gap-3 ${className}`}>
       {rendered.map(({ sample, html }) => (
-        <CodeBlock
-          key={sample.label}
-          html={html}
-          code={sample.code}
-          label={sample.label}
-        />
+        <CodeBlock key={sample.label} html={html} code={sample.code} label={sample.label} />
       ))}
     </div>
   );

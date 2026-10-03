@@ -131,7 +131,7 @@ capped at 100; levels: `low <30`, `medium 30–59`, `high ≥60`, plus some rule
 | SI-SCR-003 | Script uses `eval`, `new Function`, `child_process` with dynamic strings, base64 / hex blobs | high |
 | SI-SCR-004 | Script references secrets paths (`~/.ssh`, `~/.npmrc`, `.env`, `~/.aws`, browser profiles) | high |
 | SI-SCR-005 | Script changed vs. the previously approved version | high (re-approval) |
-| SI-REC-001 | Version published < 72h ago (configurable) | medium |
+| SI-REC-001 | Version published more recently than `minReleaseAge` (default 72h) and not held back (see §7a) | medium |
 | SI-REC-002 | New maintainer added on this version / maintainer set changed | high |
 | SI-POP-001 | Name within edit distance 1–2 of a top-N package (typosquat) | high |
 | SI-POP-002 | Very low weekly downloads + install script | medium |
@@ -154,13 +154,29 @@ Top-N list and download counts come from the npm downloads API, cached daily.
     "esbuild@0.25.x": "approved",
     "sharp": { "approvedHash": "sha256-…", "by": "ben", "at": "2026-10-03" }
   },
-  "minPackageAgeHours": 72,
+  "minReleaseAge": "72h",
+  "minReleaseAgeExclude": ["typescript", "@types/*"],
   "failOn": "high"
 }
 ```
 
 - Approvals pin to the **script content hash**, so a changed script needs re-approval
   even if the name is trusted.
+
+## 7a. Release-age gate (prevent, don't just warn)
+
+Inspired by [safe-npm](https://github.com/kevinslin/safe-npm) (ISC): instead of only warning
+about fresh versions, **resolve to the newest version that is at least `minReleaseAge` old**,
+so a freshly compromised release never lands.
+
+- **Prefer the PM's native setting** when it exists (npm `--before <date>`, pnpm
+  `minimumReleaseAge`; yarn/bun equivalents verified per version in CI). safe-install
+  computes the value from policy and passes it through.
+- **Fallback** (PM without native support): safe-install resolves direct dependencies itself
+  (semver range ∩ age cutoff, newest wins) and pins them; transitive deps are then caught by
+  SI-REC-001 as findings.
+- `minReleaseAgeExclude` (glob list) bypasses the gate for trusted fast movers; `--min-age`
+  overrides per run; `--min-age 0` disables.
 
 ## 8. CLI surface
 
@@ -173,7 +189,7 @@ safe-install approve <pkg>       # approve / --revoke
 safe-install explain <rule-id>   # why a rule exists, how to resolve
 safe-install install --monitor   # Linux: run approved scripts under runtime monitor
 
-Global flags: --pm, --yes, --ci, --format=text|json|sarif, --offline, --registry
+Global flags: --pm, --yes, --ci, --format=text|json|sarif, --offline, --registry, --min-age
 ```
 
 Exit codes: `0` ok · `1` policy failure · `2` user aborted · `3` tool error.
@@ -199,9 +215,9 @@ says so plainly and points to the docs.
 |---|---|---|
 | M1 | Skeleton: cobra, PM detection, npm adapter, `--ignore-scripts` proxy, GoReleaser snapshot build on 3 OSes | binary installs a project with no scripts executed |
 | M2 | Lockfile parsers: npm + pnpm + yarn v1 + yarn berry + bun → unified Graph | golden tests on real lockfiles of each format |
-| M3 | Registry client + cache, recency/maintainer/deprecation rules, risk engine, text report | `check` prints scored findings for full tree |
+| M3 | Registry client + cache (+ `SAFE_INSTALL_REGISTRY_FIXTURES` file mode for tests), release-age gate (§7a), recency/maintainer/deprecation rules, risk engine, text report | `check` prints scored findings for full tree |
 | M4 | Script extraction + static rules, interactive approve flow, run approved scripts (all 5 adapters) | esbuild/sharp approved and built; a fake malicious fixture blocked |
-| M5 | Policy files, content-hash approvals, `approve`/`scripts`/`explain` commands | re-approval triggers when a script changes |
+| M5 | Policy files (incl. `minReleaseAgeExclude`), content-hash approvals, `shell-init`, `approve`/`scripts`/`explain` commands | re-approval triggers when a script changes |
 | M6 | Typosquat + popularity + OSV rules; JSON/SARIF; `--ci` mode; GitHub Action | CI job fails on a seeded bad dep |
 | M7 | Linux monitor (strace backend first, eBPF second) | fixture that curls + writes `~/.bashrc` is reported/killed |
 | M8 | Release 0.1.0: signed artifacts, Homebrew/Scoop/deb/rpm, docs, website | `brew install` / `scoop install` work |
@@ -212,7 +228,8 @@ says so plainly and points to the docs.
 - **Malicious corpus**: hand-written harmless "malicious-looking" packages served from a
   local test registry (Verdaccio in CI). Never ship real malware.
 - **Integration matrix**: GitHub Actions on `ubuntu`, `macos`, `windows` × each PM.
-- **Registry**: recorded HTTP responses for unit tests; live tests behind a build tag.
+- **Registry**: recorded HTTP responses for unit tests; a fixtures-file mode
+  (`SAFE_INSTALL_REGISTRY_FIXTURES=path.json`) for CLI e2e; live tests behind a build tag.
 
 ## 12. Repo hygiene (it's a security tool)
 
@@ -228,3 +245,9 @@ says so plainly and points to the docs.
 - **Shell alias**: yes, opt-in only: `safe-install shell-init <bash|zsh|fish|pwsh>` prints
   aliases the user adds themselves. Never modifies rc files on its own (M5).
 - **Telemetry**: none, ever. Stated in README and on the website.
+
+## 14. After v1
+
+- Passthrough: forward every non-install subcommand to the detected PM so `safe-install`
+  can fully stand in for `npm`/`pnpm`/`yarn`/`bun`.
+- Credit safe-npm in README for the release-age idea.

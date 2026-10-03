@@ -120,9 +120,7 @@ async function main() {
     );
   }
 
-  console.log(
-    `✓ facts: ${found.length} claims verified against ${checkedFiles} source file(s)`,
-  );
+  console.log(`✓ facts: ${found.length} claims verified against ${checkedFiles} source file(s)`);
 }
 
 function fail(message) {

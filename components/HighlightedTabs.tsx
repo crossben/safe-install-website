@@ -9,7 +9,15 @@ import { Tabs } from './ui/Tabs';
 export async function HighlightedTabs({
   items,
 }: {
-  items: readonly { id: string; label: string; samples: { label: string; lang: 'bash' | 'powershell' | 'json' | 'yaml' | 'text'; code: string }[] }[];
+  items: readonly {
+    id: string;
+    label: string;
+    samples: {
+      label: string;
+      lang: 'bash' | 'powershell' | 'json' | 'yaml' | 'text';
+      code: string;
+    }[];
+  }[];
 }) {
   const highlighted: TabItem[] = await Promise.all(
     items.map(async (item) => ({

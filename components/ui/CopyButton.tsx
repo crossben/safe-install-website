@@ -47,11 +47,16 @@ export function CopyButton({
     <button
       type="button"
       onClick={copy}
-      aria-label={copied ? 'Copied to clipboard' : `${label} to clipboard`}
+      title={copied ? 'Copied to clipboard' : `Copy ${label} to clipboard`}
       className={`inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 font-mono text-xs text-muted transition-colors hover:border-accent hover:text-accent ${className}`}
     >
       <span aria-hidden="true">{copied ? '✓' : '⧉'}</span>
-      <span>{copied ? 'Copied' : label}</span>
+      <span>
+        {copied ? 'Copied' : label}
+        {/* Extends the accessible name without altering the visible label,
+            which keeps the two in sync for assistive tech. */}
+        <span className="sr-only"> to clipboard</span>
+      </span>
     </button>
   );
 }

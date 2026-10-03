@@ -8,10 +8,9 @@ import type { CodeLang } from '@/content/types';
  * highlighter is created once per build and memoised. Nothing here runs in the
  * browser and no highlighting library ships to the client.
  *
- * Shiki emits both themes as CSS custom properties (`--shiki-light` /
- * `--shiki-dark`); `app/globals.css` picks the right one, which means one
- * server-rendered string serves light and dark with no duplicated markup and no
- * theme flash on toggle.
+ * Code blocks are dark in both themes (the light palette does not clear AA
+ * against our surfaces), so only one Shiki theme is loaded and the emitted
+ * markup carries no redundant per-theme variables.
  */
 
 const LANGS = ['bash', 'powershell', 'json', 'yaml', 'text'] as const;
@@ -20,7 +19,7 @@ let highlighterPromise: Promise<Highlighter> | null = null;
 
 function getHighlighter(): Promise<Highlighter> {
   highlighterPromise ??= createHighlighter({
-    themes: ['vitesse-light', 'vitesse-dark'],
+    themes: ['vitesse-dark'],
     langs: [...LANGS],
   });
   return highlighterPromise;
@@ -35,11 +34,7 @@ export async function highlight(code: string, lang: CodeLang): Promise<string> {
   if (cached !== undefined) return cached;
 
   const highlighter = await getHighlighter();
-  const html = highlighter.codeToHtml(code, {
-    lang,
-    themes: { light: 'vitesse-light', dark: 'vitesse-dark' },
-    defaultColor: false,
-  });
+  const html = highlighter.codeToHtml(code, { lang, theme: 'vitesse-dark' });
 
   cache.set(key, html);
   return html;

@@ -21,10 +21,19 @@ export default tseslint.config(
     },
   },
   {
-    // Our validation scripts are plain Node ESM with JSDoc types.
+    // Our validation scripts are plain Node ESM. The globals they rely on are
+    // listed explicitly rather than pulling in a `globals` dependency.
     files: ['scripts/**/*.mjs'],
     languageOptions: {
-      globals: { process: 'readonly', console: 'readonly' },
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        fetch: 'readonly',
+        AbortSignal: 'readonly',
+        URL: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+      },
     },
   },
 );

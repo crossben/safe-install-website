@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   title: en.meta.title,
   description: en.meta.description,
   applicationName: 'safe-install',
-  authors: [{ name: 'safe-install contributors' }],
+  authors: [{ name: en.footer.byline.name, url: en.footer.byline.url }],
   keywords: [
     'supply chain security',
     'npm',
@@ -80,7 +80,11 @@ const themeScript = `
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable}`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${inter.variable} ${jetbrainsMono.variable}`}
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

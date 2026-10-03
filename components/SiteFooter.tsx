@@ -11,12 +11,22 @@ export function SiteFooter() {
               <span aria-hidden="true" className="inline-block h-2 w-2 rounded-sm bg-accent" />
               safe-install
             </p>
-            <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted">
-              {en.footer.tagline}
-            </p>
+            <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted">{en.footer.tagline}</p>
+
             <p className="mt-6 font-mono text-xs text-muted">
-              Licensed under {license.value}
+              {en.footer.byline.label}{' '}
+              {/* rel="me" marks this as a link to the author's own identity page. */}
+              <a
+                href={en.footer.byline.url}
+                target="_blank"
+                rel="me noopener noreferrer"
+                className="text-ink-soft underline decoration-line-strong underline-offset-4 transition-colors hover:text-accent"
+              >
+                {en.footer.byline.name}
+              </a>
             </p>
+
+            <p className="mt-2 font-mono text-xs text-muted">Licensed under {license.value}</p>
           </div>
 
           <nav aria-label="Footer">
@@ -63,9 +73,7 @@ export function SiteFooter() {
         </div>
 
         <div className="mt-12 border-t border-line pt-6">
-          <p className="max-w-2xl text-xs leading-relaxed text-muted">
-            {en.footer.telemetryBody}
-          </p>
+          <p className="max-w-2xl text-xs leading-relaxed text-muted">{en.footer.telemetryBody}</p>
         </div>
       </div>
     </footer>

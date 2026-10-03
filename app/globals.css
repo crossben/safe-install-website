@@ -171,24 +171,19 @@
 /* --------------------------------------------------------------------------
    Shiki
 
-   Shiki renders both themes into CSS custom properties so one server-generated
-   string serves light and dark. These rules pick the right variable; without
-   them every token would fall back to its light value in dark mode.
+   Code blocks stay dark in both themes: it keeps the terminal-native feel, and
+   the light half of the Shiki palette does not clear AA against our surfaces.
+   Only the dark token set is ever applied.
    -------------------------------------------------------------------------- */
 
 @layer components {
   .code-scroll .shiki,
   .code-scroll .shiki span {
-    color: var(--shiki-light);
+    color: var(--shiki-dark);
   }
 
   .code-scroll .shiki {
     background-color: transparent !important;
-  }
-
-  .dark .code-scroll .shiki,
-  .dark .code-scroll .shiki span {
-    color: var(--shiki-dark);
   }
 }
 

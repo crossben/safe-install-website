@@ -21,12 +21,13 @@ export function Section({
   className?: string;
 }) {
   return (
-    <section id={id} aria-labelledby={`${id}-heading`} className={`shell py-16 sm:py-24 ${className}`}>
+    <section
+      id={id}
+      aria-labelledby={`${id}-heading`}
+      className={`shell py-16 sm:py-24 ${className}`}
+    >
       <Reveal className="max-w-3xl">
-        <p
-          data-reveal
-          className="font-mono text-xs tracking-[0.18em] text-accent uppercase"
-        >
+        <p data-reveal className="font-mono text-xs tracking-[0.18em] text-accent uppercase">
           {eyebrow}
         </p>
         <h2

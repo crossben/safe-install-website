@@ -88,15 +88,15 @@ export function Tabs({ items }: { items: readonly TabItem[] }) {
             {item.panels.map((panel) => (
               <div
                 key={panel.label}
-                className="group relative overflow-hidden rounded-lg border border-line bg-surface"
+                className="overflow-hidden rounded-lg border border-white/10 bg-term-bg"
               >
-                <div className="flex items-center justify-between border-b border-line bg-surface-2 px-3 py-1.5">
-                  <span className="font-mono text-[11px] tracking-wide text-muted uppercase">
+                <div className="flex items-center justify-between border-b border-white/10 px-3 py-1.5">
+                  <span className="font-mono text-[11px] tracking-wide text-term-muted uppercase">
                     {panel.label}
                   </span>
                   <CopyButton
                     text={panel.code}
-                    className="border-transparent px-1.5 py-0.5 hover:border-line"
+                    className="border-transparent px-1.5 py-0.5 text-term-muted hover:border-white/20 hover:text-term-accent"
                   />
                 </div>
                 <div

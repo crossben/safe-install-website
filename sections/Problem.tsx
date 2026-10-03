@@ -8,12 +8,7 @@ export function Problem() {
   const scripts = lifecycleScripts.value;
 
   return (
-    <Section
-      id="problem"
-      eyebrow={problem.eyebrow}
-      heading={problem.heading}
-      lede={problem.lede}
-    >
+    <Section id="problem" eyebrow={problem.eyebrow} heading={problem.heading} lede={problem.lede}>
       <div className="mt-12 grid gap-8 md:grid-cols-3">
         {problem.points.map((point, i) => (
           <Reveal key={point.title} className="h-full" delay={i * 0.08}>
@@ -28,9 +23,7 @@ export function Problem() {
 
       <Reveal className="mt-14" delay={0.1}>
         <div className="rounded-xl border border-accent/30 bg-accent-wash/50 p-6 sm:p-8">
-          <p className="font-mono text-sm leading-relaxed text-ink">
-            {problem.kicker}
-          </p>
+          <p className="font-mono text-sm leading-relaxed text-ink">{problem.kicker}</p>
           <p className="mt-4 font-mono text-xs text-muted">
             The fields are{' '}
             {scripts.map((script, i) => (

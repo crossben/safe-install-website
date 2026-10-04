@@ -26,9 +26,7 @@ export function CI() {
             <h3 className="font-mono text-xs tracking-[0.18em] text-muted uppercase">
               {ci.commandHeading}
             </h3>
-            <p className="mt-3 font-mono text-sm text-ink-soft">
-              safe-install check --ci --format=sarif
-            </p>
+            <p className="mt-3 font-mono text-sm text-ink-soft">{ci.command}</p>
             <p className="mt-4 text-sm leading-relaxed text-muted">{ci.flagNote}</p>
           </div>
 

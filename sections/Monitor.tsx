@@ -1,8 +1,7 @@
 import { en } from '@/content/en';
 import {
-  monitorBackends,
-  monitorTracepoints,
-  monitorFallbackCommand,
+  monitorBackend,
+  monitorScope,
   monitorKill,
   monitorDefaultAction,
   monitorSignalsFact,
@@ -13,7 +12,6 @@ import { Reveal } from '@/components/ui/Reveal';
 
 export function Monitor() {
   const { monitor } = en;
-  const [preferred, fallback] = monitorBackends.value;
 
   return (
     <Section id="monitor" eyebrow={monitor.eyebrow} heading={monitor.heading} lede={monitor.lede}>
@@ -24,14 +22,9 @@ export function Monitor() {
               {monitor.howHeading}
             </h3>
             <p className="mt-3 text-sm leading-relaxed text-muted">{monitor.backendBody}</p>
-            <ul className="mt-4 flex flex-col gap-1.5 font-mono text-xs text-muted">
-              <li>
-                <span className="text-accent">{preferred}</span> · {monitorTracepoints.value}
-              </li>
-              <li>
-                <span className="text-accent">{fallback}</span> · {monitorFallbackCommand.value}
-              </li>
-            </ul>
+            <p className="mt-4 font-mono text-xs text-muted">
+              <span className="text-accent">{monitorBackend.value}</span> · {monitorScope.value}
+            </p>
           </div>
         </Reveal>
 
@@ -60,10 +53,10 @@ export function Monitor() {
             </h3>
             <p className="mt-3 text-sm leading-relaxed text-muted">{monitor.actionBody}</p>
             <p className="mt-4 font-mono text-xs text-muted">
-              default: <span className="text-ok">{monitorDefaultAction.value}</span>
+              report: <span className="text-ok">{monitorDefaultAction.value}</span>
             </p>
             <p className="mt-1.5 font-mono text-xs text-muted">
-              opt-in: <span className="text-danger">{monitorKill.value}</span>
+              kill: <span className="text-danger">{monitorKill.value}</span>
             </p>
           </div>
         </Reveal>

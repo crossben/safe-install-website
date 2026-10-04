@@ -49,7 +49,8 @@ export type Step = {
 
 export type FamilyCopy = {
   /** Must match a `RuleFamily` in `facts.ts`. */
-  readonly id: 'scripts' | 'recency' | 'popularity' | 'integrity' | 'maintenance' | 'vulns';
+  readonly id:
+    'scripts' | 'recency' | 'popularity' | 'integrity' | 'maintenance' | 'vulns' | 'monitor';
   readonly title: string;
   readonly blurb: string;
 };
@@ -92,6 +93,44 @@ export type InstallMethod = {
   readonly title: string;
   readonly summary: string;
   readonly samples: readonly CodeSample[];
+};
+
+/** A docs page's prose. `body` paragraphs may use `code` spans. */
+export type DocsSection = {
+  readonly id: string;
+  readonly title: string;
+  readonly body: readonly string[];
+};
+
+export type DocsPage = {
+  readonly title: string;
+  /** Meta description and the line under the title. */
+  readonly description: string;
+  readonly sections: readonly DocsSection[];
+};
+
+export type DocsContent = {
+  readonly navLabel: string;
+  readonly sourceLabel: string;
+  readonly editLabel: string;
+  readonly index: DocsPage;
+  readonly gettingStarted: DocsPage;
+  readonly usage: DocsPage & {
+    readonly answers: readonly { readonly key: string; readonly meaning: string }[];
+    readonly modes: readonly { readonly when: string; readonly what: string }[];
+  };
+  readonly policy: DocsPage & {
+    readonly fields: readonly { readonly name: string; readonly meaning: string }[];
+    readonly locations: readonly { readonly where: string; readonly path: string }[];
+  };
+  readonly checkAndCi: DocsPage & {
+    readonly inputs: readonly { readonly name: string; readonly meaning: string }[];
+  };
+  readonly monitor: DocsPage;
+  readonly rules: DocsPage & {
+    readonly whyLabel: string;
+    readonly fixLabel: string;
+  };
 };
 
 export type SiteContent = {
@@ -180,6 +219,7 @@ export type SiteContent = {
     readonly heading: string;
     readonly lede: string;
     readonly commandHeading: string;
+    readonly command: string;
     readonly exitCodesHeading: string;
     readonly exitCodesNote: string;
     readonly workflowTitle: string;
@@ -193,6 +233,7 @@ export type SiteContent = {
     readonly methods: readonly InstallMethod[];
     readonly dropInNote: string;
   };
+  readonly docs: DocsContent;
   readonly footer: {
     readonly tagline: string;
     readonly byline: {

@@ -52,7 +52,7 @@ the two is what makes this work everywhere without OS-specific tricks.
 | HTTP | `net/http` + on-disk cache (`os.UserCacheDir`) | Registry metadata cache with ETag revalidation. |
 | Terminal UI | `charmbracelet/lipgloss` + `charmbracelet/huh` (prompts) | Clean, colors degrade gracefully on Windows/CI. |
 | Script analysis | Go regex + small token scanner | No JS engine needed for v1 heuristics. |
-| Linux monitor | `cilium/ebpf` (preferred) with `strace` fallback, `fsnotify` | Runtime visibility on Linux only. |
+| Linux monitor | `strace` (eBPF deferred until after v1, see §13) | Runtime visibility on Linux only. |
 | Testing | `testing` + golden files, `testscript` (rogpeppe/go-internal) for CLI e2e | Fixtures of real lockfiles and malicious-script corpora. |
 | Release | **GoReleaser** + GitHub Actions | Builds linux/darwin/windows × amd64/arm64; publishes GitHub Releases, Homebrew tap, Scoop bucket, `.deb`/`.rpm`, checksums, **cosign signatures + SLSA provenance**. |
 | Lint | `golangci-lint`, `govulncheck` | We must be a clean dependency ourselves. |
@@ -65,11 +65,11 @@ the signed binary can come later, with checksum verification.)
 
 | PM | Lockfile | Disable scripts | Run approved scripts |
 |---|---|---|---|
-| npm | `package-lock.json` (v2/v3) | `npm install --ignore-scripts` | `npm rebuild <pkg>` per approved package |
-| pnpm | `pnpm-lock.yaml` (v6–v9) | `pnpm install --ignore-scripts` | `pnpm rebuild <pkg>` |
-| Yarn classic | `yarn.lock` (v1) | `yarn install --ignore-scripts` | run scripts from package dir (lifecycle order) |
-| Yarn berry | `yarn.lock` (YAML, v2+) | `YARN_ENABLE_SCRIPTS=false` | write `dependenciesMeta.<pkg>.built` / `yarn rebuild <pkg>` |
-| bun | `bun.lock` (text, ≥1.2) | `bun install --ignore-scripts` | `bun pm trust <pkg>` |
+| npm | `package-lock.json` (v2/v3) | `npm install --ignore-scripts` | `npm run <stage> --ignore-scripts` in the package directory |
+| pnpm | `pnpm-lock.yaml` (v6–v9) | `pnpm install --ignore-scripts` | `npm run <stage> --ignore-scripts` in the package directory |
+| Yarn classic | `yarn.lock` (v1) | `yarn install --ignore-scripts` | `npm run <stage> --ignore-scripts` in the package directory |
+| Yarn berry | `yarn.lock` (YAML, v2+) | `yarn install --mode=skip-build` (`enableScripts=false` misses the project's own scripts and stops unplugging) | `npm run <stage>` in `.yarn/unplugged/…` with `NODE_OPTIONS=--require .pnp.cjs` (`yarn rebuild` also runs the project's pending scripts) |
+| bun | `bun.lock` (text, ≥1.2) | `bun install --ignore-scripts` | `npm run <stage> --ignore-scripts` in the package directory |
 
 Detection: by lockfile presence, then `packageManager` field in `package.json`,
 then `--pm` flag. Each PM is an **adapter** behind one interface (see §5); exact flag
@@ -127,18 +127,23 @@ capped at 100; levels: `low <30`, `medium 30–59`, `high ≥60`, plus some rule
 | ID | Signal | Severity |
 |---|---|---|
 | SI-SCR-001 | Has `preinstall` / `install` / `postinstall` | medium |
-| SI-SCR-002 | Script downloads + executes (`curl … \| sh`, `wget`, `Invoke-WebRequest`, `powershell -enc`) | high / block |
-| SI-SCR-003 | Script uses `eval`, `new Function`, `child_process` with dynamic strings, base64 / hex blobs | high |
-| SI-SCR-004 | Script references secrets paths (`~/.ssh`, `~/.npmrc`, `.env`, `~/.aws`, browser profiles) | high |
+| SI-SCR-002 | Script downloads + executes (`curl … \| sh`, `wget … \| bash`, `iwr … \| iex`, encoded PowerShell) | block |
+| SI-SCR-003 | Script (or the file it runs) uses `eval` / `new Function`, or contains a long base64 / hex blob | high |
+| SI-SCR-004 | Script (or the file it runs) references credentials (`~/.ssh`, `~/.npmrc`, `~/.aws`, `.git-credentials`, browser profiles, `NPM_TOKEN`…) | high |
 | SI-SCR-005 | Script changed vs. the previously approved version | high (re-approval) |
 | SI-REC-001 | Version published more recently than `minReleaseAge` (default 72h) and not held back (see §7a) | medium |
-| SI-REC-002 | New maintainer added on this version / maintainer set changed | high |
-| SI-POP-001 | Name within edit distance 1–2 of a top-N package (typosquat) | high |
-| SI-POP-002 | Very low weekly downloads + install script | medium |
-| SI-INT-001 | Lockfile integrity hash missing or mismatches registry | block |
+| SI-REC-002 | Recent release (≤90d) that dropped provenance vs. the previous version, or was published by a never-seen human publisher (trusted publishing exempt) → high; maintainers added → low | high / low |
+| SI-POP-001 | Name one edit (or only case/separators) away from a top-1000 package, and not itself in the ~16k popular list | high |
+| SI-POP-002 | < 1000 weekly downloads + install script (counts fetched only for such packages) | medium |
+| SI-INT-001 | Lockfile integrity hash mismatches the registry (same algorithm) | block |
 | SI-INT-002 | Resolved URL not on the configured registry | high |
 | SI-DEP-001 | Package is deprecated / unpublished version | low |
-| SI-VUL-001 | Known advisory (OSV API) | per advisory |
+| SI-VUL-001 | OSV: `MAL-*` malicious package → block; advisories one level below their severity (critical→high, high→medium, else low) | block / per advisory |
+| SI-MON-001 | Runtime monitor: script connected to the network (DNS ignored) | medium |
+| SI-MON-002 | Runtime monitor: script ran a network tool (curl, wget, nc, ssh…) | medium |
+| SI-MON-003 | Runtime monitor: script read credentials (`~/.ssh`, `~/.npmrc`, cloud, browser data) | high |
+| SI-MON-004 | Runtime monitor: script wrote to a persistence location (shell rc, `~/.ssh`, autostart, systemd, git hooks, system dirs) | high |
+| SI-MON-005 | Runtime monitor: script wrote outside the project and caches | medium |
 
 Top-N list and download counts come from the npm downloads API, cached daily.
 
@@ -192,21 +197,24 @@ safe-install install --monitor   # Linux: run approved scripts under runtime mon
 Global flags: --pm, --yes, --ci, --format=text|json|sarif, --offline, --registry, --min-age
 ```
 
-Exit codes: `0` ok · `1` policy failure · `2` user aborted · `3` tool error.
+Exit codes: `0` ok · `1` policy failure · `3` tool error. (Declining a prompt skips that
+script; it is not an error, so `2` is reserved and never returned.)
 
 ## 9. Linux-only: runtime monitor
 
-Runs approved scripts while observing them. Not available on macOS/Windows: the CLI
-says so plainly and points to the docs.
+Runs approved scripts while observing them. Not available on macOS/Windows: the CLI says so
+plainly.
 
-- **Backend**: eBPF (tracepoints `sys_enter_execve`, `connect`, `openat`) when
-  CAP_BPF/root is available; else `strace -f -e trace=execve,connect,openat` fallback;
-  else disabled with a message.
-- **Signals**: unexpected network destinations (not the registry), spawning shells/
-  downloaders, reads of secret paths, writes outside the project / `node_modules` /
-  cache, writes to shell rc files, `~/.ssh`, `/etc`, cron, systemd units.
-- **Action**: report by default; `--monitor=kill` terminates the process tree on a
-  high-severity event.
+- **Backend**: `strace -f` on the script only (safe-install is passed as npm's
+  `--script-shell`), tracing exec, connect, open/creat, rename and unlink. No root needed.
+  eBPF is deferred until after v1 (§13).
+- **Signals**: network connections (SI-MON-001), network tools such as curl/wget/nc/ssh
+  (SI-MON-002), credential reads (SI-MON-003), writes to persistence locations: shell rc
+  files, `~/.ssh`, autostart, systemd, git hooks, system dirs (SI-MON-004), writes outside
+  the project and caches (SI-MON-005).
+- **Action**: report by default; `--monitor=kill` kills the script's process group on the
+  first high-severity event. strace reports a syscall after it happened, so the first
+  dangerous action is not prevented; later ones are.
 - **Later**: sandbox mode (user + mount + net namespaces, Landlock) to deny instead of observe.
 
 ## 10. Roadmap (weekend-sized milestones)
@@ -218,8 +226,8 @@ says so plainly and points to the docs.
 | M3 | Registry client + cache (+ `SAFE_INSTALL_REGISTRY_FIXTURES` file mode for tests), release-age gate (§7a), recency/maintainer/deprecation rules, risk engine, text report | `check` prints scored findings for full tree |
 | M4 | Script extraction + static rules, interactive approve flow, run approved scripts (all 5 adapters) | esbuild/sharp approved and built; a fake malicious fixture blocked |
 | M5 | Policy files (incl. `minReleaseAgeExclude`), content-hash approvals, `shell-init`, `approve`/`scripts`/`explain` commands | re-approval triggers when a script changes |
-| M6 | Typosquat + popularity + OSV rules; JSON/SARIF; `--ci` mode; GitHub Action | CI job fails on a seeded bad dep |
-| M7 | Linux monitor (strace backend first, eBPF second) | fixture that curls + writes `~/.bashrc` is reported/killed |
+| M6 | Typosquat + popularity + OSV rules (SI-INT-001/002 shipped in M3); JSON/SARIF; `--ci` mode; GitHub Action | CI job fails on a seeded bad dep |
+| M7 | Linux monitor (strace; eBPF deferred, see §13) | fixture that curls + writes `~/.bashrc` is reported/killed |
 | M8 | Release 0.1.0: signed artifacts, Homebrew/Scoop/deb/rpm, docs, website | `brew install` / `scoop install` work |
 
 ## 11. Testing
@@ -240,11 +248,43 @@ says so plainly and points to the docs.
 
 ## 13. Decisions (formerly open questions)
 
-- **Yarn berry PnP**: supported. Approved scripts run via `yarn rebuild <pkg>`, verified by an
-  integration test in M4. If PnP blocks it, document as a known limitation, don't hack around it.
+- **Yarn berry PnP**: supported (verified in M4). `yarn rebuild <pkg>` turned out to also run
+  the project's own pending scripts, so approved scripts run directly from berry's unplugged
+  copies with `.pnp.cjs` preloaded, the documented way to run Node under PnP.
+- **Running approved scripts** (M4): every PM uses `npm run <stage> --ignore-scripts` in the
+  package's directory (runs exactly that stage, no pre/post hooks). Needs npm on PATH.
+- **Prompts** (M4): plain stdin prompts instead of `charmbracelet/huh`, one dependency fewer.
+- **Yarn classic** has no native release-age setting: `install` says so; `check` still flags.
 - **Shell alias**: yes, opt-in only: `safe-install shell-init <bash|zsh|fish|pwsh>` prints
   aliases the user adds themselves. Never modifies rc files on its own (M5).
 - **Telemetry**: none, ever. Stated in README and on the website.
+- **Policy format** (M5): `allowScripts` is keyed by package name; each approval stores
+  `version` (informational), `hash` (scripts + files they run) and `at`. Any version whose
+  scripts hash the same stays approved; a different hash is SI-SCR-005 and re-prompts.
+- **`add`** shipped in M5 (needed by `shell-init`: pnpm/yarn reject names on `install`).
+- **`minReleaseAgeExclude`** applies to findings only; the age given to the package manager
+  (npm `--before`, etc.) is global.
+- **Config dir override**: `SAFE_INSTALL_CONFIG_DIR` (used by tests).
+- **Popular list** (M6): embedded from npm-high-impact (MIT), regenerated by
+  `scripts/update-popular.sh`. Top-N comes from there, not a daily download fetch.
+- **Registry 404** (M6): a finding (unpublished?), not a tool error, and still sent to OSV,
+  because malicious packages are usually unpublished.
+- **GitHub Action** (M6): composite `action.yml` that builds from source until M8 releases;
+  `.github/workflows/action.yml` asserts it fails on a seeded malicious dependency.
+- **Runtime monitor** (M7): strace only. Scope is exactly the scripts: the runner passes
+  `--script-shell=<safe-install>`, which runs `strace -f -- /bin/sh -c <script>`; nested
+  `npm run` inside a traced script runs plain (already traced). Kill mode acts after the
+  syscall. **eBPF deferred**: it needs root/CAP_BPF, which could not be tested in
+  development; revisit after v1 together with an enforcing sandbox (Landlock/seccomp).
+- **Install-time review ignores ordinary advisories** (M7 fix): only `MAL-*` entries affect
+  whether a script may run; `check` still reports vulnerabilities.
+- **Release** (M8): GoReleaser with `homebrew_casks` (`brews` is deprecated) in `Casks/` and a
+  Scoop manifest in `bucket/` of this repo, committed by the release job with the built-in
+  token (no extra repos or secrets). Version-less archive names so `releases/latest/download`
+  works for the Action. macOS: no auto-removal of the quarantine flag (caveat instead);
+  Apple notarization is a later, paid option. Release footer + README document
+  `cosign verify-blob` and `gh attestation verify`.
+- **Test-only env**: `SAFE_INSTALL_OSV_URL`, `SAFE_INSTALL_DOWNLOADS_URL` (`off` disables).
 
 ## 14. After v1
 

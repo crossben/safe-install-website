@@ -121,6 +121,27 @@ async function main() {
   }
 
   console.log(`✓ facts: ${found.length} claims verified against ${checkedFiles} source file(s)`);
+
+  // Docs: every snippet resolves to exactly one README block, and the rules the
+  // site lists are exactly the rules the CLI explains.
+  const { validateDocs } = await import(path.join(websiteRoot, 'lib/docs.ts'));
+  let explained;
+  try {
+    explained = validateDocs();
+  } catch (error) {
+    fail(String(error instanceof Error ? error.message : error));
+  }
+  const listed = factsModule.rules.map((r) => r.id);
+  const missingDocs = listed.filter((id) => !explained.includes(id));
+  const unlisted = explained.filter((id) => !listed.includes(id));
+  if (missingDocs.length || unlisted.length) {
+    fail(
+      'facts.rules and the CLI explanations disagree:\n' +
+        (missingDocs.length ? `  no explanation for: ${missingDocs.join(', ')}\n` : '') +
+        (unlisted.length ? `  explained but not in facts.rules: ${unlisted.join(', ')}\n` : ''),
+    );
+  }
+  console.log(`✓ docs: snippets resolved, ${explained.length} rules match the CLI explanations`);
 }
 
 function fail(message) {

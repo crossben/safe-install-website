@@ -97,7 +97,9 @@ export function Checks() {
             </div>
 
             <div className="rounded-lg border border-line bg-surface/70 p-4">
-              <dt className="font-mono text-[11px] tracking-wide text-muted uppercase">Fallback</dt>
+              <dt className="font-mono text-[11px] tracking-wide text-muted uppercase">
+                Yarn classic
+              </dt>
               <dd className="mt-2 text-sm leading-relaxed text-muted">
                 {checks.releaseAgeGate.fallback}
               </dd>

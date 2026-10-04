@@ -1,15 +1,15 @@
 /**
- * Every factual claim the site makes, with the exact text in `../plan.md`
- * that backs it.
+ * Every factual claim the site makes, with the exact text that backs it.
  *
  * `scripts/check-facts.mjs` (wired into `predev` / `prebuild`) imports this
  * module, walks it for anything shaped like a `Fact`, and fails the build if a
- * cited `quote` no longer appears in the cited `file`. If `plan.md` changes,
- * the build breaks until these claims are either updated or removed.
+ * cited `quote` no longer appears in the cited `file`.
  *
- * Once the Go repository exists, repoint `file` at the real sources (the rule
- * files under `internal/analyze/rules/`, the CLI definitions in
- * `cmd/safe-install/`, and so on) without changing anything else.
+ * Sources are snapshots under `content/sources/` (refresh with
+ * `npm run sync:sources`):
+ *   - `app/…`  files from the CLI repository: anything a user can run or rely on
+ *              (commands, exit codes, package-manager behaviour) cites these;
+ *   - `plan.md` the product plan: design decisions and rule severities.
  *
  * Copy is NOT here. Prose lives in `content/en.ts`.
  */
@@ -41,12 +41,21 @@ export function fact<T>(value: T, source: FactSource): Fact<T> {
  * `npm run sync:sources` after editing the plan.
  */
 const PLAN = 'content/sources/plan.md' as const;
+/** The CLI repository's README: install commands, usage, package-manager table. */
+const README = 'content/sources/app/README.md' as const;
+/** The CLI's exit codes. */
+const ROOT_GO = 'content/sources/app/root.go' as const;
+
+/** A fact whose value is quoted verbatim from its source (commands, code). */
+function verbatim(text: string, section: string, file: string = README): Fact<string> {
+  return fact(text, { section, file, quote: text });
+}
 
 /** Severity as the plan describes it. `block` means always-block regardless of score. */
 export type Severity = 'low' | 'medium' | 'high' | 'block' | 'advisory';
 
 export type RuleFamily =
-  'scripts' | 'recency' | 'popularity' | 'integrity' | 'maintenance' | 'vulns';
+  'scripts' | 'recency' | 'popularity' | 'integrity' | 'maintenance' | 'vulns' | 'monitor';
 
 export type Rule = {
   readonly id: string;
@@ -220,80 +229,82 @@ export const workflowSteps = fact(
 /* §4 Package managers                                                         */
 /* -------------------------------------------------------------------------- */
 
+function pm(
+  id: PackageManager['id'],
+  name: string,
+  lockfile: string,
+  disableScripts: string,
+  runApproved: string,
+  quote: string,
+): PackageManager {
+  return {
+    id,
+    name,
+    lockfile,
+    disableScripts,
+    runApproved,
+    source: { section: 'README — Supported package managers', file: README, quote },
+  };
+}
+
+const RUN_IN_DIR = 'npm run <stage> --ignore-scripts in the package directory';
+
 export const packageManagers: readonly PackageManager[] = [
-  {
-    id: 'npm',
-    name: 'npm',
-    lockfile: 'package-lock.json (v2/v3)',
-    disableScripts: 'npm install --ignore-scripts',
-    runApproved: 'npm rebuild <pkg> per approved package',
-    source: {
-      section: '§4 Package managers supported in v1',
-      file: PLAN,
-      quote:
-        '| npm | `package-lock.json` (v2/v3) | `npm install --ignore-scripts` | `npm rebuild <pkg>` per approved package |',
-    },
-  },
-  {
-    id: 'pnpm',
-    name: 'pnpm',
-    lockfile: 'pnpm-lock.yaml (v6–v9)',
-    disableScripts: 'pnpm install --ignore-scripts',
-    runApproved: 'pnpm rebuild <pkg>',
-    source: {
-      section: '§4 Package managers supported in v1',
-      file: PLAN,
-      quote:
-        '| pnpm | `pnpm-lock.yaml` (v6–v9) | `pnpm install --ignore-scripts` | `pnpm rebuild <pkg>` |',
-    },
-  },
-  {
-    id: 'yarn-classic',
-    name: 'Yarn classic',
-    lockfile: 'yarn.lock (v1)',
-    disableScripts: 'yarn install --ignore-scripts',
-    runApproved: 'run scripts from package dir (lifecycle order)',
-    source: {
-      section: '§4 Package managers supported in v1',
-      file: PLAN,
-      quote:
-        '| Yarn classic | `yarn.lock` (v1) | `yarn install --ignore-scripts` | run scripts from package dir (lifecycle order) |',
-    },
-  },
-  {
-    id: 'yarn-berry',
-    name: 'Yarn berry',
-    lockfile: 'yarn.lock (YAML, v2+)',
-    disableScripts: 'YARN_ENABLE_SCRIPTS=false',
-    runApproved: 'write dependenciesMeta.<pkg>.built / yarn rebuild <pkg>',
-    source: {
-      section: '§4 Package managers supported in v1',
-      file: PLAN,
-      quote:
-        '| Yarn berry | `yarn.lock` (YAML, v2+) | `YARN_ENABLE_SCRIPTS=false` | write `dependenciesMeta.<pkg>.built` / `yarn rebuild <pkg>` |',
-    },
-  },
-  {
-    id: 'bun',
-    name: 'bun',
-    lockfile: 'bun.lock (text, ≥1.2)',
-    disableScripts: 'bun install --ignore-scripts',
-    runApproved: 'bun pm trust <pkg>',
-    source: {
-      section: '§4 Package managers supported in v1',
-      file: PLAN,
-      quote:
-        '| bun | `bun.lock` (text, ≥1.2) | `bun install --ignore-scripts` | `bun pm trust <pkg>` |',
-    },
-  },
+  pm(
+    'npm',
+    'npm',
+    'package-lock.json (v2/v3)',
+    'npm install --ignore-scripts',
+    RUN_IN_DIR,
+    '| npm | `package-lock.json` (v2/v3) | `npm install --ignore-scripts` | `npm run <stage> --ignore-scripts` in the package directory |',
+  ),
+  pm(
+    'pnpm',
+    'pnpm',
+    'pnpm-lock.yaml (v6, v9)',
+    'pnpm install --ignore-scripts',
+    RUN_IN_DIR,
+    '| pnpm | `pnpm-lock.yaml` (v6, v9) | `pnpm install --ignore-scripts` | `npm run <stage> --ignore-scripts` in the package directory |',
+  ),
+  pm(
+    'yarn-classic',
+    'Yarn classic',
+    'yarn.lock (v1)',
+    'yarn install --ignore-scripts',
+    RUN_IN_DIR,
+    '| Yarn classic | `yarn.lock` (v1) | `yarn install --ignore-scripts` | `npm run <stage> --ignore-scripts` in the package directory |',
+  ),
+  pm(
+    'yarn-berry',
+    'Yarn berry',
+    'yarn.lock (v2+)',
+    'yarn install --mode=skip-build',
+    'npm run <stage> --ignore-scripts in .yarn/unplugged, with .pnp.cjs preloaded',
+    '| Yarn berry | `yarn.lock` (v2+) | `yarn install --mode=skip-build` | `npm run <stage> --ignore-scripts` in `.yarn/unplugged`, with `.pnp.cjs` preloaded |',
+  ),
+  pm(
+    'bun',
+    'bun',
+    'bun.lock',
+    'bun install --ignore-scripts',
+    RUN_IN_DIR,
+    '| bun | `bun.lock` | `bun install --ignore-scripts` | `npm run <stage> --ignore-scripts` in the package directory |',
+  ),
 ];
 
+export const corepackPinned = fact(true, {
+  section: 'README — Supported package managers',
+  file: README,
+  quote: 'When `packageManager` pins pnpm or Yarn,\nsafe-install runs it through corepack',
+});
+
 export const pmDetectionOrder = fact(
-  ['lockfile presence', 'packageManager field in package.json', '--pm flag'] as const,
+  ['lockfile', 'packageManager field in package.json', '--pm overrides both'] as const,
   {
-    section: '§4 Package managers supported in v1',
-    file: PLAN,
-    quote: 'Detection: by lockfile presence, then `packageManager` field in `package.json`,',
+    section: 'README — Supported package managers',
+    file: README,
+    quote:
+      'The package manager is detected from the lockfile, then the `packageManager` field in\n`package.json` (`--pm` overrides both).',
   },
 );
 
@@ -328,23 +339,23 @@ export const rules: readonly Rule[] = [
   rule(
     'SI-SCR-002',
     'scripts',
-    'Script downloads + executes (`curl … | sh`, `wget`, `Invoke-WebRequest`, `powershell -enc`)',
+    'Script downloads + executes (`curl … | sh`, `wget … | bash`, `iwr … | iex`, encoded PowerShell)',
     'block',
-    '| SI-SCR-002 | Script downloads + executes (`curl … \\| sh`, `wget`, `Invoke-WebRequest`, `powershell -enc`) | high / block |',
+    '| SI-SCR-002 | Script downloads + executes (`curl … \\| sh`, `wget … \\| bash`, `iwr … \\| iex`, encoded PowerShell) | block |',
   ),
   rule(
     'SI-SCR-003',
     'scripts',
-    'Script uses `eval`, `new Function`, `child_process` with dynamic strings, base64 / hex blobs',
+    'Script (or the file it runs) uses `eval` / `new Function`, or contains a long base64 / hex blob',
     'high',
-    '| SI-SCR-003 | Script uses `eval`, `new Function`, `child_process` with dynamic strings, base64 / hex blobs | high |',
+    '| SI-SCR-003 | Script (or the file it runs) uses `eval` / `new Function`, or contains a long base64 / hex blob | high |',
   ),
   rule(
     'SI-SCR-004',
     'scripts',
-    'Script references secrets paths (`~/.ssh`, `~/.npmrc`, `.env`, `~/.aws`, browser profiles)',
+    'Script (or the file it runs) references credentials (`~/.ssh`, `~/.npmrc`, `~/.aws`, `.git-credentials`, browser profiles, `NPM_TOKEN`…)',
     'high',
-    '| SI-SCR-004 | Script references secrets paths (`~/.ssh`, `~/.npmrc`, `.env`, `~/.aws`, browser profiles) | high |',
+    '| SI-SCR-004 | Script (or the file it runs) references credentials (`~/.ssh`, `~/.npmrc`, `~/.aws`, `.git-credentials`, browser profiles, `NPM_TOKEN`…) | high |',
   ),
   rule(
     'SI-SCR-005',
@@ -363,30 +374,30 @@ export const rules: readonly Rule[] = [
   rule(
     'SI-REC-002',
     'recency',
-    'New maintainer added on this version / maintainer set changed',
+    'Recent release (≤90d) that dropped provenance vs. the previous version, or was published by a never-seen human publisher (trusted publishing exempt) → high; maintainers added → low',
     'high',
-    '| SI-REC-002 | New maintainer added on this version / maintainer set changed | high |',
+    '| SI-REC-002 | Recent release (≤90d) that dropped provenance vs. the previous version, or was published by a never-seen human publisher (trusted publishing exempt) → high; maintainers added → low | high / low |',
   ),
   rule(
     'SI-POP-001',
     'popularity',
-    'Name within edit distance 1–2 of a top-N package (typosquat)',
+    'Name one edit (or only case/separators) away from a top-1000 package, and not itself in the ~16k popular list',
     'high',
-    '| SI-POP-001 | Name within edit distance 1–2 of a top-N package (typosquat) | high |',
+    '| SI-POP-001 | Name one edit (or only case/separators) away from a top-1000 package, and not itself in the ~16k popular list | high |',
   ),
   rule(
     'SI-POP-002',
     'popularity',
-    'Very low weekly downloads + install script',
+    '< 1000 weekly downloads + install script (counts fetched only for such packages)',
     'medium',
-    '| SI-POP-002 | Very low weekly downloads + install script | medium |',
+    '| SI-POP-002 | < 1000 weekly downloads + install script (counts fetched only for such packages) | medium |',
   ),
   rule(
     'SI-INT-001',
     'integrity',
-    'Lockfile integrity hash missing or mismatches registry',
+    'Lockfile integrity hash mismatches the registry (same algorithm)',
     'block',
-    '| SI-INT-001 | Lockfile integrity hash missing or mismatches registry | block |',
+    '| SI-INT-001 | Lockfile integrity hash mismatches the registry (same algorithm) | block |',
   ),
   rule(
     'SI-INT-002',
@@ -405,9 +416,44 @@ export const rules: readonly Rule[] = [
   rule(
     'SI-VUL-001',
     'vulns',
-    'Known advisory (OSV API)',
+    'OSV: `MAL-*` malicious package → block; advisories one level below their severity (critical→high, high→medium, else low)',
     'advisory',
-    '| SI-VUL-001 | Known advisory (OSV API) | per advisory |',
+    '| SI-VUL-001 | OSV: `MAL-*` malicious package → block; advisories one level below their severity (critical→high, high→medium, else low) | block / per advisory |',
+  ),
+  rule(
+    'SI-MON-001',
+    'monitor',
+    'Runtime monitor: script connected to the network (DNS ignored)',
+    'medium',
+    '| SI-MON-001 | Runtime monitor: script connected to the network (DNS ignored) | medium |',
+  ),
+  rule(
+    'SI-MON-002',
+    'monitor',
+    'Runtime monitor: script ran a network tool (curl, wget, nc, ssh…)',
+    'medium',
+    '| SI-MON-002 | Runtime monitor: script ran a network tool (curl, wget, nc, ssh…) | medium |',
+  ),
+  rule(
+    'SI-MON-003',
+    'monitor',
+    'Runtime monitor: script read credentials (`~/.ssh`, `~/.npmrc`, cloud, browser data)',
+    'high',
+    '| SI-MON-003 | Runtime monitor: script read credentials (`~/.ssh`, `~/.npmrc`, cloud, browser data) | high |',
+  ),
+  rule(
+    'SI-MON-004',
+    'monitor',
+    'Runtime monitor: script wrote to a persistence location (shell rc, `~/.ssh`, autostart, systemd, git hooks, system dirs)',
+    'high',
+    '| SI-MON-004 | Runtime monitor: script wrote to a persistence location (shell rc, `~/.ssh`, autostart, systemd, git hooks, system dirs) | high |',
+  ),
+  rule(
+    'SI-MON-005',
+    'monitor',
+    'Runtime monitor: script wrote outside the project and caches',
+    'medium',
+    '| SI-MON-005 | Runtime monitor: script wrote outside the project and caches | medium |',
   ),
 ];
 
@@ -507,10 +553,28 @@ export const releaseAgeGateInspiredBy = fact('https://github.com/kevinslin/safe-
   quote: 'Inspired by [safe-npm](https://github.com/kevinslin/safe-npm) (ISC):',
 });
 
-export const releaseAgeNativeSettings = fact('npm `--before <date>`, pnpm `minimumReleaseAge`', {
-  section: '§7a Release-age gate — native setting',
+export const releaseAgeNativeSettings = fact(
+  'npm --before · pnpm minimumReleaseAge · Yarn berry npmMinimalAgeGate · bun --minimum-release-age',
+  {
+    section: '§13 Decisions — Yarn classic',
+    file: PLAN,
+    quote:
+      '**Yarn classic** has no native release-age setting: `install` says so; `check` still flags.',
+  },
+);
+
+export const releaseAgeInstallAndCheck = fact(true, {
+  section: 'README — GitHub Action / release age',
+  file: README,
+  quote:
+    '`install`\npasses this to the package manager so fresh releases are not picked up, and `check`\nflags any already in the lockfile.',
+});
+
+export const releaseAgeExcludeFindingsOnly = fact(true, {
+  section: '§13 Decisions — minReleaseAgeExclude',
   file: PLAN,
-  quote: '`minimumReleaseAge`; yarn/bun equivalents verified per version in CI). safe-install',
+  quote:
+    '**`minReleaseAgeExclude`** applies to findings only; the age given to the package manager',
 });
 
 export const releaseAgeFallback = fact(
@@ -607,7 +671,7 @@ export const shellInitNeverModifiesRc = fact(true, {
 export const yarnBerryPnp = fact('supported', {
   section: '§13 Decisions — Yarn berry PnP',
   file: PLAN,
-  quote: '**Yarn berry PnP**: supported.',
+  quote: '**Yarn berry PnP**: supported (verified in M4).',
 });
 
 export const globalFlags = fact(
@@ -629,17 +693,32 @@ export const globalFlags = fact(
 
 export const exitCodes = fact(
   [
-    { code: 0, name: 'ok', description: 'Everything passed.' },
-    { code: 1, name: 'policy failure', description: 'A finding crossed your `failOn` threshold.' },
-    { code: 2, name: 'user aborted', description: 'You said no and stopped the run.' },
-    { code: 3, name: 'tool error', description: 'Something went wrong inside safe-install.' },
+    { code: 0, name: 'ok', description: 'Nothing reached your threshold.' },
+    {
+      code: 1,
+      name: 'policy failure',
+      description:
+        'A package reached --fail-on; with --ci, also an unapproved high-risk script or a high-risk runtime-monitor finding.',
+    },
+    {
+      code: 3,
+      name: 'tool error',
+      description:
+        'safe-install could not do its job, for example registry metadata it could not fetch.',
+    },
   ],
   {
-    section: '§8 CLI surface',
-    file: PLAN,
-    quote: '`0` ok · `1` policy failure · `2` user aborted · `3` tool error',
+    section: 'internal/cli/root.go — exit codes',
+    file: ROOT_GO,
+    quote: 'ExitOK            = 0\n\tExitPolicyFailure = 1',
   },
 );
+
+export const exitCodesReadme = fact('0 ok · 1 policy failure · 3 tool error', {
+  section: 'README — Check without installing',
+  file: README,
+  quote: 'Exit codes: `0` ok · `1` a package reached `--fail-on`',
+});
 
 /* -------------------------------------------------------------------------- */
 /* §9 Linux runtime monitor                                                    */
@@ -648,52 +727,55 @@ export const exitCodes = fact(
 export const monitorLinuxOnly = fact(true, {
   section: '§9 Linux-only: runtime monitor',
   file: PLAN,
-  quote: 'Not available on macOS/Windows: the CLI says so plainly',
+  quote: 'Not available on macOS/Windows: the CLI says so\nplainly.',
 });
 
-export const monitorBackends = fact(['eBPF', 'strace'] as const, {
-  section: '§3 Stack — Linux monitor row; §9 Backend',
+export const monitorBackend = fact('strace', {
+  section: '§3 Stack — Linux monitor row',
   file: PLAN,
-  quote: '`cilium/ebpf` (preferred) with `strace` fallback, `fsnotify`',
+  quote: '| Linux monitor | `strace` (eBPF deferred until after v1, see §13) |',
 });
 
-export const monitorTracepoints = fact('sys_enter_execve, connect, openat', {
-  section: '§9 Linux-only: runtime monitor — Backend',
-  file: PLAN,
-  quote: 'eBPF (tracepoints `sys_enter_execve`, `connect`, `openat`) when',
-});
-
-export const monitorFallbackCommand = fact('strace -f -e trace=execve,connect,openat', {
-  section: '§9 Linux-only: runtime monitor — Backend',
-  file: PLAN,
-  quote: '`strace -f -e trace=execve,connect,openat` fallback;',
-});
+export const monitorScope = fact(
+  'strace -f on the script only (safe-install is npm’s --script-shell)',
+  {
+    section: '§9 Linux-only: runtime monitor — Backend',
+    file: PLAN,
+    quote:
+      "**Backend**: `strace -f` on the script only (safe-install is passed as npm's\n  `--script-shell`)",
+  },
+);
 
 export const monitorSignals: readonly string[] = [
-  'Unexpected network destinations (not the registry)',
-  'Spawning shells/downloaders',
-  'Reads of secret paths',
-  'Writes outside the project / `node_modules` / cache',
-  'Writes to shell rc files, `~/.ssh`, `/etc`, cron, systemd units',
+  'Network connections (DNS lookups are ignored)',
+  'Network tools: curl, wget, nc, ssh and similar',
+  'Reads of credentials: ~/.ssh, ~/.npmrc, cloud and browser data',
+  'Writes to persistence locations: shell startup files, ~/.ssh, autostart, systemd, git hooks, system directories',
+  'Writes outside the project and package caches',
 ];
 
 export const monitorSignalsFact = fact(monitorSignals, {
-  section: '§9 Linux-only: runtime monitor — Signals',
-  file: PLAN,
-  quote: 'unexpected network destinations (not the registry), spawning shells/',
+  section: 'README — Runtime monitor (Linux)',
+  file: README,
+  quote: 'safe-install reports network connections, network tools (`curl`, `wget`, `nc`…),',
 });
 
-export const monitorKill = fact('--monitor=kill', {
-  section: '§9 Linux-only: runtime monitor — Action',
-  file: PLAN,
-  quote: '`--monitor=kill` terminates the process tree on a',
+export const monitorAfterTheFact = fact(true, {
+  section: 'README — Runtime monitor (Linux)',
+  file: README,
+  quote:
+    'strace sees a syscall once it happened, so `kill` stops\nthe script *after* the first dangerous action, not before it.',
 });
 
-export const monitorDefaultAction = fact('report by default', {
-  section: '§9 Linux-only: runtime monitor — Action',
-  file: PLAN,
-  quote: '**Action**: report by default;',
-});
+export const monitorKill = verbatim(
+  'safe-install install --monitor=kill',
+  'README — Runtime monitor (Linux)',
+);
+
+export const monitorDefaultAction = verbatim(
+  'safe-install install --monitor',
+  'README — Runtime monitor (Linux)',
+);
 
 /* -------------------------------------------------------------------------- */
 /* §12/§13 Guarantees                                                          */
@@ -721,26 +803,44 @@ export const nonGoalsFact = fact(nonGoals, {
 /* Distribution (inferred from §3/§10/§12)                                     */
 /* -------------------------------------------------------------------------- */
 
-/**
- * The plan commits to shipping these channels (M8: "`brew install` / `scoop install`
- * work"; §3 Release row lists the Homebrew tap, Scoop bucket and `.deb`/`.rpm`), but
- * does not spell out exact install lines. These are the conventional forms for those
- * channels and are marked as editable in `website/README.md`.
- */
-export const distribution = fact(
-  {
-    homebrew: 'brew install crossben/tap/safe-install',
-    scoop: 'scoop install safe-install',
-    deb: 'sudo dpkg -i safe-install_0.1.0_linux_amd64.deb',
-    rpm: 'sudo rpm -i safe-install-0.1.0-1.x86_64.rpm',
-    cosign: 'cosign verify-blob',
-    keylessIdentity:
-      'https://github.com/crossben/safe-install/.github/workflows/release.yml@refs/tags/v0.1.0',
-    keylessIssuer: 'https://token.actions.githubusercontent.com',
-  },
-  {
-    section: '§3 Stack — Release row; §10 M8',
-    file: PLAN,
-    quote: 'publishes GitHub Releases, Homebrew tap, Scoop bucket, `.deb`/`.rpm`, checksums',
-  },
-);
+/** Install commands, verbatim from the README. */
+export const distribution = {
+  brewTap: verbatim(
+    'brew tap crossben/safe-install https://github.com/crossben/safe-install',
+    'README — Get it',
+  ),
+  brewInstall: verbatim('brew install --cask safe-install', 'README — Get it'),
+  scoopBucket: verbatim(
+    'scoop bucket add safe-install https://github.com/crossben/safe-install',
+    'README — Get it',
+  ),
+  scoopInstall: verbatim('scoop install safe-install', 'README — Get it'),
+  deb: verbatim('sudo apt install ./safe-install_*_linux_amd64.deb', 'README — Get it'),
+  goInstall: verbatim(
+    'go install github.com/crossben/safe-install/cmd/safe-install@latest',
+    'README — Get it',
+  ),
+  verify: verbatim(
+    `cosign verify-blob checksums.txt \\
+  --signature checksums.txt.sig --certificate checksums.txt.pem \\
+  --certificate-identity-regexp '^https://github.com/crossben/safe-install/\\.github/workflows/release\\.yml@refs/tags/v' \\
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+sha256sum --ignore-missing -c checksums.txt
+
+gh attestation verify safe-install_linux_amd64.tar.gz --repo crossben/safe-install`,
+    'README — Verify a download',
+  ),
+  action: verbatim(
+    `- uses: crossben/safe-install@v0.1.0
+  with:
+    working-directory: .   # where package.json and the lockfile are
+    fail-on: high          # low, medium, high, block, none
+    sarif: true            # upload to code scanning (needs security-events: write)`,
+    'README — GitHub Action',
+  ),
+  quarantine: fact(true, {
+    section: 'README — Get it',
+    file: README,
+    quote: 'On macOS, Homebrew keeps the quarantine flag on the (not yet notarized) binary',
+  }),
+} as const;

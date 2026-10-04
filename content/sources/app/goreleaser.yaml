@@ -1,0 +1,114 @@
+version: 2
+
+project_name: safe-install
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - main: ./cmd/safe-install
+    binary: safe-install
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/crossben/safe-install/internal/cli.version={{.Version}}
+      - -X github.com/crossben/safe-install/internal/cli.commit={{.ShortCommit}}
+      - -X github.com/crossben/safe-install/internal/cli.date={{.CommitDate}}
+    mod_timestamp: "{{ .CommitTimestamp }}" # reproducible builds
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+
+archives:
+  # Version-less names so .../releases/latest/download/<name> always works (used by the GitHub Action).
+  - name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+sboms:
+  - artifacts: archive
+
+# Keyless signing (Sigstore): the signature is bound to this repository's release workflow.
+signs:
+  - cmd: cosign
+    artifacts: checksum
+    signature: "${artifact}.sig"
+    certificate: "${artifact}.pem"
+    args:
+      - sign-blob
+      - "--output-signature=${signature}"
+      - "--output-certificate=${certificate}"
+      - "${artifact}"
+      - "--yes"
+
+nfpms:
+  - package_name: safe-install
+    file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    vendor: crossben
+    homepage: https://github.com/crossben/safe-install
+    maintainer: crossben <https://github.com/crossben>
+    description: Install JavaScript dependencies without running install scripts you did not approve.
+    license: Apache-2.0
+    formats: [deb, rpm, apk]
+    recommends:
+      - strace # for --monitor
+    bindir: /usr/bin
+
+# Formula-free tap and bucket live in this repository (no extra repos or tokens):
+#   brew tap crossben/safe-install https://github.com/crossben/safe-install
+#   scoop bucket add safe-install https://github.com/crossben/safe-install
+homebrew_casks:
+  - name: safe-install
+    directory: Casks
+    homepage: https://github.com/crossben/safe-install
+    description: Install JavaScript dependencies without running install scripts you did not approve
+    license: Apache-2.0
+    binaries: [safe-install]
+    caveats: |
+      macOS may block the unsigned binary on first run. Remove the quarantine flag yourself:
+        xattr -dr com.apple.quarantine "$(brew --caskroom)/safe-install"
+    repository:
+      owner: crossben
+      name: safe-install
+      branch: main
+    commit_author:
+      name: safe-install release bot
+      email: 41898282+github-actions[bot]@users.noreply.github.com
+    commit_msg_template: "chore: Homebrew cask for {{ .Tag }}"
+
+scoops:
+  - name: safe-install
+    directory: bucket
+    homepage: https://github.com/crossben/safe-install
+    description: Install JavaScript dependencies without running install scripts you did not approve
+    license: Apache-2.0
+    repository:
+      owner: crossben
+      name: safe-install
+      branch: main
+    commit_author:
+      name: safe-install release bot
+      email: 41898282+github-actions[bot]@users.noreply.github.com
+    commit_msg_template: "chore: Scoop manifest for {{ .Tag }}"
+
+changelog:
+  use: github
+  filters:
+    exclude:
+      - "^chore: (Homebrew|Scoop)"
+
+release:
+  footer: |
+    **Verify** this release: see "Verify a download" in the README
+    (`cosign verify-blob` for checksums.txt, `gh attestation verify` for provenance).

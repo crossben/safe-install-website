@@ -1,0 +1,101 @@
+name: safe-install check
+description: Check a JavaScript project's dependencies for supply-chain risks (npm, pnpm, yarn, bun)
+author: crossben
+branding:
+  icon: shield
+  color: orange
+
+inputs:
+  working-directory:
+    description: Directory containing package.json and the lockfile
+    default: .
+  fail-on:
+    description: Fail when a package reaches this level (low, medium, high, block, none)
+    default: high
+  min-age:
+    description: Minimum release age, e.g. 72h or 3d; 0 disables
+    default: 72h
+  sarif:
+    description: "Upload results to GitHub code scanning (needs `security-events: write`)"
+    default: "false"
+  version:
+    description: Release to use (latest, or a tag like v0.1.0), or "source" to build from this action's checkout
+    default: latest
+
+outputs:
+  exit-code:
+    description: 0 clean, 1 policy failure, 3 tool error
+    value: ${{ steps.check.outputs.exit-code }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      if: inputs.version == 'source'
+      with:
+        go-version: stable
+        cache: false
+    - name: Build safe-install from source
+      if: inputs.version == 'source'
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: go build -trimpath -o "$RUNNER_TEMP/safe-install" ./cmd/safe-install
+    - name: Download safe-install
+      if: inputs.version != 'source'
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        case "$RUNNER_OS" in
+          Linux) os=linux; ext=tar.gz ;;
+          macOS) os=darwin; ext=tar.gz ;;
+          Windows) os=windows; ext=zip ;;
+          *) echo "unsupported runner OS: $RUNNER_OS" >&2; exit 1 ;;
+        esac
+        case "$RUNNER_ARCH" in
+          X64) arch=amd64 ;;
+          ARM64) arch=arm64 ;;
+          *) echo "unsupported runner arch: $RUNNER_ARCH" >&2; exit 1 ;;
+        esac
+        if [ "$VERSION" = latest ]; then
+          base="https://github.com/crossben/safe-install/releases/latest/download"
+        else
+          base="https://github.com/crossben/safe-install/releases/download/$VERSION"
+        fi
+        asset="safe-install_${os}_${arch}.${ext}"
+        cd "$RUNNER_TEMP"
+        curl -fsSLO "$base/$asset"
+        curl -fsSLO "$base/checksums.txt"
+        grep " $asset\$" checksums.txt > expected.txt
+        if command -v sha256sum >/dev/null; then sha256sum -c expected.txt; else shasum -a 256 -c expected.txt; fi
+        if [ "$ext" = zip ]; then unzip -oq "$asset" safe-install.exe && mv safe-install.exe safe-install; else tar xzf "$asset" safe-install; fi
+        chmod +x safe-install
+        ./safe-install version
+    - name: Check dependencies
+      id: check
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        FAIL_ON: ${{ inputs.fail-on }}
+        MIN_AGE: ${{ inputs.min-age }}
+        SARIF: ${{ inputs.sarif }}
+      run: |
+        args=(check --fail-on "$FAIL_ON" --min-age "$MIN_AGE")
+        if [ "$SARIF" = "true" ]; then args+=(--sarif-file "$RUNNER_TEMP/safe-install.sarif"); fi
+        set +e
+        "$RUNNER_TEMP/safe-install" "${args[@]}"
+        code=$?
+        set -e
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+    - name: Upload to code scanning
+      if: inputs.sarif == 'true' && always()
+      uses: github/codeql-action/upload-sarif@1190a975f95ce23525efb6a3fc21ea29567c1b52 # v3.38.2
+      with:
+        sarif_file: ${{ runner.temp }}/safe-install.sarif
+        category: safe-install
+    - name: Result
+      shell: bash
+      env:
+        CODE: ${{ steps.check.outputs.exit-code }}
+      run: exit "$CODE"

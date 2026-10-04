@@ -1,13 +1,17 @@
 #!/usr/bin/env node
 /**
- * Refreshes `content/sources/plan.md` from the workspace-root `plan.md`.
+ * Refreshes the vendored sources under `content/sources/` from the workspace:
+ * the product plan (`../plan.md`) and a fixed list of files from the CLI
+ * repository (`../app/`).
  *
- * The product plan lives at the root of the parent workspace, which is
- * deliberately not committed (§5: "Each is its own public git repo; the root
- * (plan, prompts) is not committed"). Facts in `content/facts.ts` cite the
- * vendored snapshot instead, so a clean clone of this repo can verify its own
- * claims. Run this after editing the plan, then commit the snapshot alongside
- * whatever claim changes it caused to fail.
+ * The plan lives at the root of the parent workspace, which is deliberately not
+ * committed, and the CLI is its own repository. Facts in `content/facts.ts` and
+ * the docs snippets cite these snapshots instead, so a clean clone of this repo
+ * can verify its own claims. Run this after the plan or the CLI changes, then
+ * commit the snapshots alongside whatever claim changes they caused to fail.
+ *
+ * Only the files listed in SOURCES are copied: never the CLI's tests, and never
+ * agent instruction files.
  */
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -18,29 +22,44 @@ import { fileURLToPath } from 'node:url';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const websiteRoot = path.resolve(scriptDir, '..');
+const workspace = path.resolve(websiteRoot, '..');
+const sourcesDir = path.join(websiteRoot, 'content', 'sources');
 
-const upstream = path.resolve(websiteRoot, '..', 'plan.md');
-const snapshot = path.join(websiteRoot, 'content', 'sources', 'plan.md');
+/** [path in the workspace, path under content/sources/] */
+const SOURCES = [
+  ['plan.md', 'plan.md'],
+  ['app/README.md', 'app/README.md'],
+  ['app/CHANGELOG.md', 'app/CHANGELOG.md'],
+  ['app/action.yml', 'app/action.yml'],
+  ['app/.goreleaser.yaml', 'app/goreleaser.yaml'],
+  ['app/internal/analyze/explain.go', 'app/explain.go'],
+  ['app/internal/cli/root.go', 'app/root.go'],
+];
 
-if (!existsSync(upstream)) {
+const missing = SOURCES.filter(([from]) => !existsSync(path.join(workspace, from)));
+if (missing.length > 0) {
   console.error(
-    `✗ sync-sources: no plan found at ${upstream}\n` +
-      `  This site is its own repo; run this from a full workspace checkout.`,
+    `✗ sync-sources: not found in ${workspace}:\n` +
+      missing.map(([from]) => `    ${from}`).join('\n') +
+      '\n  This site is its own repo; run this from a full workspace checkout.',
   );
   process.exit(1);
 }
 
-const contents = await readFile(upstream, 'utf8');
-const previous = existsSync(snapshot) ? await readFile(snapshot, 'utf8') : null;
+let changed = 0;
+for (const [from, to] of SOURCES) {
+  const contents = await readFile(path.join(workspace, from), 'utf8');
+  const target = path.join(sourcesDir, to);
+  const previous = existsSync(target) ? await readFile(target, 'utf8') : null;
+  if (previous === contents) continue;
+  await mkdir(path.dirname(target), { recursive: true });
+  await writeFile(target, contents, 'utf8');
+  console.log(`✓ sources: updated content/sources/${to}`);
+  changed++;
+}
 
-await mkdir(path.dirname(snapshot), { recursive: true });
-await writeFile(snapshot, contents, 'utf8');
-
-if (previous === contents) {
-  console.log('✓ sources: plan.md already up to date');
+if (changed === 0) {
+  console.log('✓ sources: all snapshots up to date');
 } else {
-  console.log(
-    `✓ sources: updated content/sources/plan.md (${contents.split('\n').length} lines)\n` +
-      '  Now run `npm run check:facts` — any claim the plan no longer supports will fail.',
-  );
+  console.log('  Now run `npm run check:facts`: any claim the sources no longer support will fail.');
 }

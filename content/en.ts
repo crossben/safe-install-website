@@ -472,7 +472,8 @@ export const en: SiteContent = {
     },
     usage: {
       title: 'Usage',
-      description: 'install, add, the approval prompt, and the commands that manage scripts.',
+      description:
+        'Installing and adding packages, the approval prompt, and the commands that manage scripts.',
       sections: [
         {
           id: 'install',

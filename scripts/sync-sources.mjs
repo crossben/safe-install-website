@@ -61,5 +61,7 @@ for (const [from, to] of SOURCES) {
 if (changed === 0) {
   console.log('✓ sources: all snapshots up to date');
 } else {
-  console.log('  Now run `npm run check:facts`: any claim the sources no longer support will fail.');
+  console.log(
+    '  Now run `npm run check:facts`: any claim the sources no longer support will fail.',
+  );
 }

@@ -67,7 +67,7 @@ func newRootCmd() *cobra.Command {
 	pf.StringVar(&g.minAge, "min-age", "72h", "minimum release age, e.g. 72h or 3d; 0 disables")
 
 	root.AddCommand(newInstallCmd(&g), newAddCmd(&g), newCheckCmd(&g), newScriptsCmd(&g),
-		newApproveCmd(&g), newExplainCmd(), newShellInitCmd(), newVersionCmd())
+		newApproveCmd(&g), newWhyCmd(&g), newExplainCmd(), newShellInitCmd(), newVersionCmd())
 	return root
 }
 

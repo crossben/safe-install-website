@@ -60,13 +60,16 @@ bound to this repository's release workflow) and attaches SLSA build provenance:
 
 ```sh
 cosign verify-blob checksums.txt \
-  --signature checksums.txt.sig --certificate checksums.txt.pem \
+  --bundle checksums.txt.sigstore.json \
   --certificate-identity-regexp '^https://github.com/crossben/safe-install/\.github/workflows/release\.yml@refs/tags/v' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 sha256sum --ignore-missing -c checksums.txt
 
 gh attestation verify safe-install_linux_amd64.tar.gz --repo crossben/safe-install
 ```
+
+v0.1.0 predates the bundle format: verify it with `--signature checksums.txt.sig
+--certificate checksums.txt.pem` instead of `--bundle`.
 
 ## Usage
 
@@ -128,6 +131,7 @@ safe-install scripts              # packages with install scripts and their appr
 safe-install approve esbuild      # approve and run now (--revoke, --global, --no-run)
 safe-install add left-pad         # add packages through the same review
 safe-install explain SI-SCR-002   # what a rule means and what to do
+safe-install why ms               # the dependency chains that bring a package in
 ```
 
 `minReleaseAgeExclude` exempts packages from the release-age findings. The age passed to
@@ -148,6 +152,7 @@ eval "$(safe-install shell-init bash)"   # add to ~/.bashrc or ~/.zshrc
 safe-install check                  # score every package in the lockfile
 safe-install check --fail-on medium # exit 1 at medium risk or worse
 safe-install check --format json    # or sarif; --sarif-file x.sarif writes SARIF alongside text
+safe-install check --diff origin/main  # only packages new or changed since a git ref (or an old lockfile)
 ```
 
 New versions must be at least `--min-age` old (default `72h`; `0` disables). `install`
@@ -176,7 +181,26 @@ count one level below their advisory severity (`npm audit` covers those in depth
 
 The action downloads the release binary for the runner (checksum-verified; `version:`
 picks a release, `source` builds from the action's checkout) and fails the job when a
-package reaches `fail-on`.
+package reaches `fail-on`. On pull requests it checks only the packages the PR adds or
+upgrades (`diff: auto`, comparing with the base branch); set `diff: none` to always check
+everything.
+
+## Private registries
+
+safe-install reads registries and credentials where your package manager does: the
+project's `.npmrc`, your user `.npmrc` (or `$NPM_CONFIG_USERCONFIG`), the project's
+`.yarnrc.yml` (Yarn berry) and `npm_config_registry`; `--registry` overrides the default.
+Scoped registries (`@corp:registry=…`) and per-host credentials (`_authToken`, `_auth`,
+`username` / `_password`, with `${ENV}` expansion) are supported:
+
+```ini
+@corp:registry=https://npm.corp.example.com/
+//npm.corp.example.com/:_authToken=${NPM_TOKEN}
+```
+
+A credential is sent only to the registry host and path it is configured for, never to
+OSV or npm's download counts API, and never printed. Tarballs from any configured
+registry count as the registry for `SI-INT-002`.
 
 ## Privacy
 

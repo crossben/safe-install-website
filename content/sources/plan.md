@@ -291,3 +291,21 @@ plainly.
 - Passthrough: forward every non-install subcommand to the detected PM so `safe-install`
   can fully stand in for `npm`/`pnpm`/`yarn`/`bun`.
 - Credit safe-npm in README for the release-age idea.
+
+## 15. v0.2 roadmap (agreed 2026-10-05; review stop after each)
+
+| # | Milestone | Done when |
+|---|---|---|
+| N1 | Registry config from `.npmrc` / `.yarnrc.yml`: default + scoped registries, per-host auth (`_authToken`, `_auth`, user/password, `${ENV}`); tokens only ever sent to their own host | `check` works against an authenticated private registry; no SI-INT-002 false positives |
+| N2 | `check --diff <git-ref or lockfile>`: only new/changed packages; Action uses it on PRs | a PR adding 1 package reports 1 package |
+| N3 | `safe-install why <pkg>`: dependency paths from the roots | paths printed for direct, transitive, dev, workspace |
+| N4 | Whole-package code scan of new/changed packages (SCR patterns on JS files, minified-noise controls) | an obfuscated `index.js` payload is flagged; popular packages stay quiet |
+| N5 | Linux sandbox for approved scripts (Landlock + network namespace) | a script cannot write `~/.bashrc` or reach the network unless allowed |
+| N6 | Approval scopes and expiry (`@scope/*`, `expires`, provenance-only) | scoped approval covers a new esbuild release with unchanged publisher |
+| N7 | Organization policy layered under the project file | org approvals/blocks apply across repos |
+| N8 | Passthrough of non-install commands to the PM | `safe-install run build` == `npm run build` |
+| N9 | Early warning when npm is missing for approved scripts | warned before installing |
+| N10 | Hostnames in SI-MON-001 | `connects to registry.npmjs.org (104.16.x.x:443)` |
+| N11 | `cache clean` and a cache size cap | cache stays under the cap |
+| N12 | Action PR summary comment | PR shows a short findings comment |
+

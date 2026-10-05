@@ -18,6 +18,11 @@ inputs:
   sarif:
     description: "Upload results to GitHub code scanning (needs `security-events: write`)"
     default: "false"
+  diff:
+    description: >-
+      Which packages to check: "auto" (on pull requests, only packages new or changed
+      versus the base branch; otherwise all), "none" (all), or a git ref / old lockfile
+    default: auto
   version:
     description: Release to use (latest, or a tag like v0.1.0), or "source" to build from this action's checkout
     default: latest
@@ -30,7 +35,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       if: inputs.version == 'source'
       with:
         go-version: stable
@@ -80,9 +85,23 @@ runs:
         FAIL_ON: ${{ inputs.fail-on }}
         MIN_AGE: ${{ inputs.min-age }}
         SARIF: ${{ inputs.sarif }}
+        DIFF: ${{ inputs.diff }}
       run: |
         args=(check --fail-on "$FAIL_ON" --min-age "$MIN_AGE")
         if [ "$SARIF" = "true" ]; then args+=(--sarif-file "$RUNNER_TEMP/safe-install.sarif"); fi
+        if [ "$DIFF" = auto ]; then
+          DIFF=none
+          case "${GITHUB_EVENT_NAME:-}" in
+            pull_request|pull_request_target)
+              if [ -n "${GITHUB_BASE_REF:-}" ] && git check-ref-format --branch "$GITHUB_BASE_REF" >/dev/null 2>&1 &&
+                 git fetch --no-tags --depth=1 origin "+refs/heads/$GITHUB_BASE_REF:refs/remotes/origin/$GITHUB_BASE_REF"; then
+                DIFF="origin/$GITHUB_BASE_REF"
+              else
+                echo "::warning::safe-install: could not fetch the base branch; checking every package"
+              fi ;;
+          esac
+        fi
+        if [ "$DIFF" != none ]; then args+=(--diff "$DIFF"); fi
         set +e
         "$RUNNER_TEMP/safe-install" "${args[@]}"
         code=$?
@@ -90,7 +109,7 @@ runs:
         echo "exit-code=$code" >> "$GITHUB_OUTPUT"
     - name: Upload to code scanning
       if: inputs.sarif == 'true' && always()
-      uses: github/codeql-action/upload-sarif@1190a975f95ce23525efb6a3fc21ea29567c1b52 # v3.38.2
+      uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
       with:
         sarif_file: ${{ runner.temp }}/safe-install.sarif
         category: safe-install

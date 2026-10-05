@@ -822,7 +822,7 @@ export const distribution = {
   ),
   verify: verbatim(
     `cosign verify-blob checksums.txt \\
-  --signature checksums.txt.sig --certificate checksums.txt.pem \\
+  --bundle checksums.txt.sigstore.json \\
   --certificate-identity-regexp '^https://github.com/crossben/safe-install/\\.github/workflows/release\\.yml@refs/tags/v' \\
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 sha256sum --ignore-missing -c checksums.txt

@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.2.0
+
+### Added
+
+- **Private registries**: registries and credentials come from `.npmrc` and `.yarnrc.yml`
+  (scoped registries, per-host `_authToken` / `_auth` / username and password, `${ENV}`).
+  A credential goes only to the registry it is configured for.
+- **`check --diff <git-ref|lockfile>`** checks only new or changed packages. The GitHub
+  Action does this on pull requests by default (`diff: auto`).
+- **`why <pkg>[@ver]`**: the dependency chains that bring a package in.
+- **Code scanning** (SI-CODE-001…003): every install and `safe-install scan` read the
+  JavaScript of installed packages for download-and-execute, credential theft and
+  obfuscation. Results are cached per version. `check --deep` downloads tarballs, verifies
+  them against the lockfile and scans them in memory (Action: `deep: auto`).
+- **Sandbox** (Linux, Landlock): `--sandbox` hides your home folder from approved scripts,
+  confines writes and blocks the network (`--sandbox-net` allows it). No root needed.
+- **Approval trust**: `approve --trust provenance` also accepts future versions built by
+  the same repository's CI (npm provenance), scope globs like `@corp/*`, and
+  `--expires 90d`.
+- **Organization policy**: a shared policy from a path or an https URL, cached and fail
+  closed, with `blockPackages` (SI-POL-001) and minimums projects cannot weaken.
+- **Use it instead of your package manager**: run scripts and read-only verbs pass through;
+  install verbs take the reviewed path; `uninstall` runs with scripts off; anything that
+  could run dependency code is refused.
+- `install` warns up front when npm, which runs approved scripts, is missing.
+- The **runtime monitor** names hosts from the DNS replies of the system resolvers
+  (`connects to registry.npmjs.org:443`).
+- **`cache dir|info|clean`**: one cache root, capped at 1 GB (`SAFE_INSTALL_CACHE_MAX`),
+  least recently used files pruned first.
+- **Markdown summary**: `check --summary-file` / `--format markdown`. The Action writes it
+  to the job summary, and with `comment: true` posts it on the pull request.
+
+### Fixed
+
+- Risk scores count each rule once: repeated advisories no longer add up to high.
+- `--diff` finds the base lockfile through git's own paths (Windows short names, macOS
+  `/private`, symlinks).
+
+### Changed
+
+- Release checksums are signed as Cosign 3 bundles (`checksums.txt.sigstore.json`).
+
 ## 0.1.0
 
 First release.

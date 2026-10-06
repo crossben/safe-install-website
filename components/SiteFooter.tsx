@@ -72,9 +72,9 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <div className="mt-12 border-t border-line pt-6">
+        {/* <div className="mt-12 border-t border-line pt-6">
           <p className="max-w-2xl text-xs leading-relaxed text-muted">{en.footer.telemetryBody}</p>
-        </div>
+        </div> */}
       </div>
     </footer>
   );

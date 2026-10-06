@@ -12,6 +12,7 @@ export default function Page() {
       <DocsBlock section={section(page, 'check')}>
         <Snippet id="check.commands" />
       </DocsBlock>
+      <DocsBlock section={section(page, 'code-scan')} />
       <DocsBlock section={section(page, 'exit-codes')}>
         <DefTable
           head={['Code', 'Meaning']}
@@ -23,6 +24,10 @@ export default function Page() {
         <Snippet id="ci.action" />
         <DefTable head={['Input', 'Meaning']} rows={page.inputs.map((i) => [i.name, i.meaning])} />
       </DocsBlock>
+      <DocsBlock section={section(page, 'registries')}>
+        <Snippet id="check.registries" />
+      </DocsBlock>
+      <DocsBlock section={section(page, 'cache')} />
     </DocsShell>
   );
 }

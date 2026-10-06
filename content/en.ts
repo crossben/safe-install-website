@@ -167,7 +167,7 @@ export const en: SiteContent = {
 
   checks: {
     eyebrow: 'What it checks',
-    heading: 'Eighteen rules, seven questions.',
+    heading: 'Twenty-two rules, nine questions.',
     lede: 'Every finding carries a rule ID, a severity and the evidence that triggered it — so you can look up exactly why something was flagged and decide for yourself.',
     families: [
       {
@@ -200,10 +200,22 @@ export const en: SiteContent = {
           'Deprecated packages and versions that have been unpublished are surfaced rather than silently installed.',
       },
       {
+        id: 'policy',
+        title: 'Has your organization banned it?',
+        blurb:
+          'Packages matching a blockPackages pattern, in your project or your organization’s shared policy, are blocked.',
+      },
+      {
         id: 'vulns',
         title: 'Is this a known-bad version?',
         blurb:
           'Every resolved version is looked up in OSV. Known malware blocks outright; ordinary vulnerabilities are reported one level below their advisory severity.',
+      },
+      {
+        id: 'code',
+        title: 'What does the rest of the code do?',
+        blurb:
+          'Malware also hides in the code a package loads, not just its install scripts. scan reads installed packages, and check --deep downloads and reads the ones a pull request adds.',
       },
       {
         id: 'monitor',
@@ -320,7 +332,7 @@ export const en: SiteContent = {
     signalsHeading: 'What it watches for',
     actionHeading: 'Report, or kill',
     actionBody:
-      'By default the monitor only reports. With --monitor=kill, the first high-severity event kills the script’s process group. strace sees a syscall once it has happened, so that first action is not prevented; everything after it is.',
+      'By default the monitor only reports. With --monitor=kill, the first high-severity event kills the script’s process group. strace sees a syscall once it has happened, so that first action is not prevented; everything after it is. To prevent it, --sandbox runs approved scripts under Landlock: no home folder, and no network unless you allow it.',
     copy: {
       neutral: 'Checking your platform…',
       roasts: {
@@ -361,7 +373,7 @@ export const en: SiteContent = {
   ci: {
     eyebrow: 'CI',
     heading: 'Fail the build, not your afternoon.',
-    lede: 'In CI, safe-install runs non-interactively: no prompts, a machine-readable report, and an exit code your pipeline can branch on.',
+    lede: 'In CI, safe-install runs non-interactively: no prompts, a machine-readable report, and an exit code your pipeline can branch on. On pull requests, the Action checks only what the PR changes and can post a short summary as a comment.',
     commandHeading: 'Or run it yourself',
     command: 'safe-install check --fail-on high --sarif-file results.sarif',
     exitCodesHeading: 'Exit codes',
@@ -514,6 +526,15 @@ export const en: SiteContent = {
           title: 'Managing scripts',
           body: [
             '`safe-install scripts` lists installed packages with scripts and their approval state. `safe-install approve` records an approval and runs the scripts; high or blocking risk needs `--force`.',
+            '`safe-install why` shows the dependency chains that bring a package in, `safe-install scan` scans the code of installed packages, and `safe-install cache` shows or empties the cache.',
+          ],
+        },
+        {
+          id: 'passthrough',
+          title: 'Use it instead of your package manager',
+          body: [
+            'Commands that run no dependency code go straight to your package manager, with its output and exit code: your own scripts (`safe-install run build`, `test`, `start`) and read-only or publishing commands such as `ls`, `outdated`, `view`, `audit` and `publish`.',
+            'Install verbs (`i`, `install`, `add`, `ci`) take safe-install’s reviewed path, and `uninstall` runs with install scripts forced off. Everything else is refused with what to do instead, including `update`, `rebuild`, `exec`, `dlx`, `create`, `audit fix`, `init <initializer>` and any command safe-install does not know.',
           ],
         },
         {
@@ -566,6 +587,22 @@ export const en: SiteContent = {
           ],
         },
         {
+          id: 'trust',
+          title: 'Trust provenance, or expire',
+          body: [
+            'With `--trust provenance`, changed scripts are still accepted when the new version carries npm provenance from the repository recorded at approval time. A release published by hand, for example with a stolen token, or built from another repository is not. Globs such as `@corp/*` are allowed only with provenance. safe-install reads the provenance the registry serves; it does not re-verify its Sigstore signature.',
+            '`--expires 90d` (or a date) makes an approval lapse, so it is reviewed again.',
+          ],
+        },
+        {
+          id: 'org',
+          title: 'Organization policy',
+          body: [
+            'A security team can publish one policy for every repository: the same format plus `blockPackages`, name globs that must never be used. Point safe-install at it with `SAFE_INSTALL_ORG_POLICY` or `orgPolicy` in your user config, which win, or in `.safe-install.json`.',
+            'Projects build on it but cannot weaken it: blocked packages are reported as `SI-POL-001` and their scripts never run, and `minReleaseAge` and `failOn` are at least as strict as the organization’s. The policy must be https. If it cannot be fetched, the last cached copy is used with a warning; with no cache, safe-install stops. `SAFE_INSTALL_ORG_POLICY_TOKEN` is sent only to the policy’s host, and never to a URL named by a project file.',
+          ],
+        },
+        {
           id: 'locations',
           title: 'Project and user files',
           body: [
@@ -584,7 +621,8 @@ export const en: SiteContent = {
       fields: [
         {
           name: 'allowScripts',
-          meaning: 'Approvals by package name: version reviewed, content hash, date.',
+          meaning:
+            'Approvals by package name (or glob): version reviewed, content hash, date, and optionally trust, repository and expires.',
         },
         {
           name: 'minReleaseAge',
@@ -597,6 +635,14 @@ export const en: SiteContent = {
         {
           name: 'failOn',
           meaning: 'The level at which check exits 1: low, medium, high, block or none.',
+        },
+        {
+          name: 'blockPackages',
+          meaning: 'Package name globs that are always blocked (SI-POL-001).',
+        },
+        {
+          name: 'orgPolicy',
+          meaning: 'Path or https URL of an organization policy to build on.',
         },
       ],
       locations: [
@@ -614,8 +660,16 @@ export const en: SiteContent = {
           id: 'check',
           title: 'safe-install check',
           body: [
-            '`check` scores every package in the lockfile without installing anything: release age, publisher and provenance changes, integrity, typosquats, rarely used packages with install scripts, and the OSV database. Output is text, JSON or SARIF.',
+            '`check` scores every package in the lockfile without installing anything: release age, publisher and provenance changes, integrity, typosquats, rarely used packages with install scripts, and the OSV database. Output is text, JSON, SARIF or Markdown, and `--summary-file` writes a short Markdown summary alongside.',
+            '`--diff` checks only the packages that are new or changed since a git ref or an old lockfile, and `--deep` also downloads those packages, verifies them against the lockfile’s integrity hash and scans their code in memory.',
             'It talks to your registry, to OSV (package names and versions) and to npm’s download counts API for rarely used packages with scripts. `--offline` uses cached registry data only and skips both.',
+          ],
+        },
+        {
+          id: 'code-scan',
+          title: 'Code scanning',
+          body: [
+            'Install scripts are not the only way in: code can also run when your app imports a package. Every install, `safe-install scan` and `check --deep` scan each package’s JavaScript for code that downloads and executes (`SI-CODE-001`), reads credentials next to a network send (`SI-CODE-002`), or is obfuscated (`SI-CODE-003`). Results are cached per package version, and files over 2 MB are skipped.',
           ],
         },
         {
@@ -627,7 +681,22 @@ export const en: SiteContent = {
           id: 'action',
           title: 'GitHub Action',
           body: [
-            'The action downloads the release binary for the runner, verifies its checksum, runs `check`, and fails the job when a package reaches `fail-on`. With `sarif: true`, findings appear in code scanning, pointing at the lockfile line.',
+            'The action downloads the release binary for the runner, verifies its checksum, runs `check`, and fails the job when a package reaches `fail-on`. On pull requests it checks only the packages the PR adds or upgrades and scans their code. With `sarif: true`, findings appear in code scanning, pointing at the lockfile line.',
+            'A short summary goes to the job summary on every run. With `comment: true`, the action also posts it on the pull request when something is risky, and edits that one comment on later runs. Package names and messages are shown as code, so a package cannot put links or mentions in it.',
+          ],
+        },
+        {
+          id: 'registries',
+          title: 'Private registries',
+          body: [
+            'safe-install reads registries and credentials where your package manager does: `.npmrc` (project and user), `.yarnrc.yml` and `npm_config_registry`. Scoped registries and per-host credentials are supported. A credential is sent only to the registry it is configured for, never to OSV or npm’s download counts, and never printed.',
+          ],
+        },
+        {
+          id: 'cache',
+          title: 'Cache',
+          body: [
+            'Registry metadata, code-scan results and the organization policy are cached in `safe-install cache dir` (`SAFE_INSTALL_CACHE_DIR` moves it). The cache is capped at 1 GB (`SAFE_INSTALL_CACHE_MAX`), and the least recently used files are removed once it is over. `safe-install cache clean` empties it.',
           ],
         },
       ],
@@ -646,14 +715,29 @@ export const en: SiteContent = {
           meaning: 'Upload results to code scanning; needs security-events: write. Default false.',
         },
         {
+          name: 'diff',
+          meaning:
+            'auto: on pull requests, only packages new or changed versus the base branch; none: all; or a git ref. Default auto.',
+        },
+        {
+          name: 'deep',
+          meaning:
+            'Also download and scan the checked packages’ code: auto (when diff applies), true or false.',
+        },
+        {
+          name: 'comment',
+          meaning:
+            'Post the summary on the pull request; needs pull-requests: write. Default false.',
+        },
+        {
           name: 'version',
           meaning: 'latest, a tag like v0.1.0, or source to build from the action’s checkout.',
         },
       ],
     },
     monitor: {
-      title: 'Runtime monitor',
-      description: 'Watch approved install scripts as they run, on Linux.',
+      title: 'Monitor and sandbox',
+      description: 'Watch approved install scripts as they run, or lock them in, on Linux.',
       sections: [
         {
           id: 'how',
@@ -679,8 +763,17 @@ export const en: SiteContent = {
           id: 'limits',
           title: 'Limits',
           body: [
-            'strace sees a syscall once it has happened, so kill mode stops the script after its first dangerous action, not before it. Writes through relative paths count as inside the package, and network destinations show as IP addresses.',
+            'strace sees a syscall once it has happened, so kill mode stops the script after its first dangerous action, not before it. Writes through relative paths count as inside the package.',
+            'Network findings name the host the script looked up, such as `connects to registry.npmjs.org:443`. Only DNS replies from your system’s name servers count, so a script cannot forge one to disguise where it connects.',
             'macOS and Windows have no `--monitor`; everything else in safe-install works the same there.',
+          ],
+        },
+        {
+          id: 'sandbox',
+          title: 'Sandbox',
+          body: [
+            '`--sandbox` runs each approved script under Landlock, with no root needed. The script can read the system and the project, write only to its package, the project’s `node_modules`, temp folders and package caches, and cannot open the rest of your home folder: `~/.ssh`, `~/.aws`, `~/.npmrc`, browser profiles and `~/.bashrc` are out of reach. Outgoing TCP is blocked unless you pass `--sandbox-net`.',
+            'The sandbox blocks rather than reports, so a script that needs something outside those paths fails. Combine it with `--monitor` to see what it tried. It needs Linux 5.13 or later (6.7 to block the network) and refuses to run rather than silently doing less.',
           ],
         },
       ],

@@ -23,6 +23,16 @@ inputs:
       Which packages to check: "auto" (on pull requests, only packages new or changed
       versus the base branch; otherwise all), "none" (all), or a git ref / old lockfile
     default: auto
+  deep:
+    description: >-
+      Also download and scan the code of the checked packages: "auto" (when diff
+      applies, so only the PR's new or changed packages), "true" or "false"
+    default: auto
+  comment:
+    description: >-
+      On pull requests, post the summary as a PR comment (updated in place on each run;
+      needs `pull-requests: write`). The summary always goes to the job summary
+    default: "false"
   version:
     description: Release to use (latest, or a tag like v0.1.0), or "source" to build from this action's checkout
     default: latest
@@ -86,9 +96,14 @@ runs:
         MIN_AGE: ${{ inputs.min-age }}
         SARIF: ${{ inputs.sarif }}
         DIFF: ${{ inputs.diff }}
+        DEEP: ${{ inputs.deep }}
       run: |
         args=(check --fail-on "$FAIL_ON" --min-age "$MIN_AGE")
         if [ "$SARIF" = "true" ]; then args+=(--sarif-file "$RUNNER_TEMP/safe-install.sarif"); fi
+        summary="$RUNNER_TEMP/safe-install.md"
+        rm -f "$summary"
+        # Releases before v0.2 have no --summary-file.
+        if "$RUNNER_TEMP/safe-install" check --help | grep -q -- --summary-file; then args+=(--summary-file "$summary"); fi
         if [ "$DIFF" = auto ]; then
           DIFF=none
           case "${GITHUB_EVENT_NAME:-}" in
@@ -102,11 +117,33 @@ runs:
           esac
         fi
         if [ "$DIFF" != none ]; then args+=(--diff "$DIFF"); fi
+        if [ "$DEEP" = true ] || { [ "$DEEP" = auto ] && [ "$DIFF" != none ]; }; then args+=(--deep); fi
         set +e
         "$RUNNER_TEMP/safe-install" "${args[@]}"
         code=$?
         set -e
         echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+        if [ -s "$summary" ]; then cat "$summary" >> "$GITHUB_STEP_SUMMARY"; fi
+    - name: Comment on the pull request
+      if: inputs.comment == 'true' && always() && github.event.pull_request.number
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR: ${{ github.event.pull_request.number }}
+      run: |
+        set -uo pipefail
+        summary="$RUNNER_TEMP/safe-install.md"
+        if [ ! -s "$summary" ]; then echo "::warning::safe-install: no summary to post"; exit 0; fi
+        marker='<!-- safe-install-report -->'
+        id=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" \
+          --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id" | head -n1)
+        if [ -n "$id" ]; then
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F "body=@$summary" >/dev/null
+        elif grep -q '^| ' "$summary"; then
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F "body=@$summary" >/dev/null
+        else
+          exit 0 # nothing risky and nothing to update
+        fi || echo "::warning::safe-install: could not comment on the pull request (it needs pull-requests: write; fork PRs get a read-only token)"
     - name: Upload to code scanning
       if: inputs.sarif == 'true' && always()
       uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2

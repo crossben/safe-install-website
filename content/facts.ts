@@ -55,7 +55,15 @@ function verbatim(text: string, section: string, file: string = README): Fact<st
 export type Severity = 'low' | 'medium' | 'high' | 'block' | 'advisory';
 
 export type RuleFamily =
-  'scripts' | 'recency' | 'popularity' | 'integrity' | 'maintenance' | 'vulns' | 'monitor';
+  | 'scripts'
+  | 'recency'
+  | 'popularity'
+  | 'integrity'
+  | 'maintenance'
+  | 'policy'
+  | 'vulns'
+  | 'code'
+  | 'monitor';
 
 export type Rule = {
   readonly id: string;
@@ -414,11 +422,39 @@ export const rules: readonly Rule[] = [
     '| SI-DEP-001 | Package is deprecated / unpublished version | low |',
   ),
   rule(
+    'SI-POL-001',
+    'policy',
+    'Package matches a `blockPackages` glob (organization or project policy)',
+    'block',
+    '| SI-POL-001 | Package matches a `blockPackages` glob (organization or project policy) | block |',
+  ),
+  rule(
     'SI-VUL-001',
     'vulns',
     'OSV: `MAL-*` malicious package → block; advisories one level below their severity (critical→high, high→medium, else low)',
     'advisory',
     '| SI-VUL-001 | OSV: `MAL-*` malicious package → block; advisories one level below their severity (critical→high, high→medium, else low) | block / per advisory |',
+  ),
+  rule(
+    'SI-CODE-001',
+    'code',
+    'Package code (not a script) downloads and executes: exec/spawn of a downloader, or eval/Function within 400 bytes after a network call',
+    'high',
+    '| SI-CODE-001 | Package code (not a script) downloads and executes: exec/spawn of a downloader, or eval/Function within 400 bytes after a network call | high |',
+  ),
+  rule(
+    'SI-CODE-002',
+    'code',
+    'Package code reads credentials within 1500 bytes of a network send',
+    'high',
+    '| SI-CODE-002 | Package code reads credentials within 1500 bytes of a network send | high |',
+  ),
+  rule(
+    'SI-CODE-003',
+    'code',
+    'Package code is obfuscated (≥100 `_0x…` names) or evals a ≥4 KB encoded blob',
+    'medium',
+    '| SI-CODE-003 | Package code is obfuscated (≥100 `_0x…` names) or evals a ≥4 KB encoded blob | medium |',
   ),
   rule(
     'SI-MON-001',

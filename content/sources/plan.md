@@ -138,7 +138,11 @@ capped at 100; levels: `low <30`, `medium 30–59`, `high ≥60`, plus some rule
 | SI-INT-001 | Lockfile integrity hash mismatches the registry (same algorithm) | block |
 | SI-INT-002 | Resolved URL not on the configured registry | high |
 | SI-DEP-001 | Package is deprecated / unpublished version | low |
+| SI-POL-001 | Package matches a `blockPackages` glob (organization or project policy) | block |
 | SI-VUL-001 | OSV: `MAL-*` malicious package → block; advisories one level below their severity (critical→high, high→medium, else low) | block / per advisory |
+| SI-CODE-001 | Package code (not a script) downloads and executes: exec/spawn of a downloader, or eval/Function within 400 bytes after a network call | high |
+| SI-CODE-002 | Package code reads credentials within 1500 bytes of a network send | high |
+| SI-CODE-003 | Package code is obfuscated (≥100 `_0x…` names) or evals a ≥4 KB encoded blob | medium |
 | SI-MON-001 | Runtime monitor: script connected to the network (DNS ignored) | medium |
 | SI-MON-002 | Runtime monitor: script ran a network tool (curl, wget, nc, ssh…) | medium |
 | SI-MON-003 | Runtime monitor: script read credentials (`~/.ssh`, `~/.npmrc`, cloud, browser data) | high |
@@ -193,6 +197,16 @@ safe-install scripts             # list packages wanting scripts + approval stat
 safe-install approve <pkg>       # approve / --revoke
 safe-install explain <rule-id>   # why a rule exists, how to resolve
 safe-install install --monitor   # Linux: run approved scripts under runtime monitor
+safe-install install --sandbox   # Linux: run approved scripts in a Landlock sandbox
+safe-install check --diff <ref>  # only packages new or changed since a git ref / old lockfile
+safe-install check --deep        # also download and scan the checked packages' code
+safe-install check --summary-file <f>  # Markdown summary (PR comment)
+safe-install approve <pkg> --trust provenance  # also future versions from the same CI repo
+safe-install approve <pkg> --expires 90d       # approval that expires
+safe-install why <pkg>[@ver]     # which dependency chains bring a package in
+safe-install scan                # scan installed packages' code for malicious patterns
+safe-install cache dir|info|clean  # inspect or empty the cache (capped at 1 GB)
+safe-install <other npm verb>    # read-only verbs pass through; ones that run code are refused
 
 Global flags: --pm, --yes, --ci, --format=text|json|sarif, --offline, --registry, --min-age
 ```
@@ -276,6 +290,36 @@ plainly.
   `npm run` inside a traced script runs plain (already traced). Kill mode acts after the
   syscall. **eBPF deferred**: it needs root/CAP_BPF, which could not be tested in
   development; revisit after v1 together with an enforcing sandbox (Landlock/seccomp).
+- **Sandbox** (N5): Landlock only (no namespaces: Ubuntu 24.04 restricts unprivileged user
+  namespaces via AppArmor). safe-install is npm's script shell, applies Landlock (official
+  go-landlock, ABI checked first: fail closed if the network can't be blocked), then execs
+  the script. RO: system, project, PATH, Node prefix; RW: package, node_modules, temp,
+  caches; network denied unless `--sandbox-net`. Opt-in; default-on to be decided later.
+- **Approval scopes** (N6): approvals gain `trust` (`hash` default | `provenance` + `repository`),
+  `expires` (YYYY-MM-DD) and glob keys (provenance only; exact name wins). Provenance repo
+  comes from the registry's attestations endpoint (SLSA `workflow.repository`), read, not
+  re-verified. Finding: esbuild's install.js is identical across releases, so plain hash
+  approvals already cover it; provenance matters for packages whose scripts really change.
+- **Organization policy** (N7): `orgPolicy` (path or https URL; env wins, then project, then
+  user), cached; unreachable → cache with warning → else stop. Layering org → user → project,
+  then enforce: org blocks always apply (SI-POL-001, scripts never run), minReleaseAge and
+  failOn never weaker than the org's. Token only to the org host.
+- **Passthrough** (N8): dispatch before cobra. Install verbs → install/add (add when a
+  package name appears not right after a flag), `ci` → install --frozen-lockfile; verbs
+  passed through only from an allow-list (own scripts, read-only/publishing commands,
+  package.json script names), `uninstall`/`remove` with scripts forced off; everything
+  else is refused (fail closed, after a security review flagged the first deny-list).
+- **N9–N11**: `install` warns before installing when npm is missing; SI-MON-001 names hosts
+  from DNS replies traced in the script (recvfrom/recvmsg, decoded and parsed defensively,
+  fuzzed; only replies whose strace-reported sender is a resolv.conf nameserver on port 53,
+so a forged reply cannot rename a connection), one finding per host:port; passthrough refuses
+`init` with any non-flag word (`init -y vite`); all caches under one root (`cache dir|info|clean`),
+  capped at 1 GB (`SAFE_INSTALL_CACHE_MAX`), least-recently-used pruned after each command.
+- **N12**: `check --summary-file` / `--format markdown` (marker comment, untrusted text only
+  inside sanitized code spans, capped at 50 packages); the Action always appends it to the
+  job summary and, with `comment: true` on PRs, creates or edits one comment owned by
+  github-actions[bot] (skipped with a warning without `pull-requests: write`); the Action
+  probes `--help` so older pinned releases keep working.
 - **Install-time review ignores ordinary advisories** (M7 fix): only `MAL-*` entries affect
   whether a script may run; `check` still reports vulnerabilities.
 - **Release** (M8): GoReleaser with `homebrew_casks` (`brews` is deprecated) in `Casks/` and a

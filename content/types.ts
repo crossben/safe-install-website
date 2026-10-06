@@ -50,7 +50,15 @@ export type Step = {
 export type FamilyCopy = {
   /** Must match a `RuleFamily` in `facts.ts`. */
   readonly id:
-    'scripts' | 'recency' | 'popularity' | 'integrity' | 'maintenance' | 'vulns' | 'monitor';
+    | 'scripts'
+    | 'recency'
+    | 'popularity'
+    | 'integrity'
+    | 'maintenance'
+    | 'policy'
+    | 'vulns'
+    | 'code'
+    | 'monitor';
   readonly title: string;
   readonly blurb: string;
 };

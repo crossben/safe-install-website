@@ -15,6 +15,12 @@ export default function Page() {
         <DefTable head={['Field', 'Meaning']} rows={page.fields.map((f) => [f.name, f.meaning])} />
       </DocsBlock>
       <DocsBlock section={section(page, 'approvals')} />
+      <DocsBlock section={section(page, 'trust')}>
+        <Snippet id="policy.trust" />
+      </DocsBlock>
+      <DocsBlock section={section(page, 'org')}>
+        <Snippet id="policy.org" />
+      </DocsBlock>
       <DocsBlock section={section(page, 'locations')}>
         <DefTable
           head={['File', 'Path']}

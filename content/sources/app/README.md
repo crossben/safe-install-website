@@ -77,6 +77,7 @@ v0.1.0 predates the bundle format: verify it with `--signature checksums.txt.sig
 safe-install                 # or: safe-install install
 safe-install install --yes   # approve every script below high risk
 safe-install install -- --omit=dev   # flags after -- go to the package manager
+safe-install ci              # clean install from the lockfile (npm ci, --frozen-lockfile, --immutable)
 ```
 
 Dependencies are installed with every lifecycle script disabled. safe-install then lists
@@ -87,7 +88,20 @@ terminal (CI) nothing is approved; `--ci` also exits 1 when a high-risk script i
 Your project's own lifecycle scripts are never run for you.
 
 Running approved scripts uses `npm run` inside each package's directory, so npm must be
-on `PATH` (it ships with Node).
+on `PATH` (it ships with Node); `install` warns up front when it is missing.
+
+## Code scanning
+
+Install scripts are not the only way in: code can also run when your app imports a
+package. Every install (and `safe-install scan`) also scans the JavaScript of each
+installed package for three shapes, each a combination rather than a single keyword:
+code that **downloads and executes** (`SI-CODE-001`), code that **reads credentials next to
+a network send** (`SI-CODE-002`) and **obfuscated** code (`SI-CODE-003`). Results are cached
+per package version, so each version is scanned once. A high finding fails `--ci`; a
+script package with code findings is not approved by `--yes`. Files over 2 MB (bundles)
+are not scanned. `check --deep` does the same without installing: it downloads each
+checked package's tarball, verifies it against the lockfile's integrity hash (a mismatch
+blocks, as `SI-INT-001`), and scans it in memory; nothing is extracted to disk.
 
 ## Runtime monitor (Linux)
 
@@ -102,8 +116,29 @@ reads of credentials (`~/.ssh`, `~/.npmrc`, cloud and browser data) and writes t
 persistence locations (shell startup files, `~/.ssh`, autostart, systemd, git hooks,
 system directories) or anywhere outside the project and caches. Only the scripts are
 traced, not the package manager. strace sees a syscall once it happened, so `kill` stops
-the script *after* the first dangerous action, not before it. On macOS and Windows,
+the script *after* the first dangerous action, not before it. Network findings name the host the script looked up (`connects to registry.npmjs.org:443`),
+from the DNS replies it received; only replies from the system's name servers
+(`/etc/resolv.conf`) count, so a script cannot forge one to disguise where it connects. On macOS and Windows,
 `--monitor` is not available; everything else works the same.
+
+## Sandbox (Linux)
+
+```sh
+safe-install install --sandbox              # approved scripts can't see your home folder or the network
+safe-install install --sandbox --sandbox-net  # …but may download (puppeteer, prebuilt binaries)
+```
+
+`--sandbox` runs each approved script under [Landlock](https://docs.kernel.org/userspace-api/landlock.html)
+(no root needed): it can read the system and the project, write only to its package, the
+project's `node_modules`, temp folders and package caches, and cannot open the rest of your
+home folder, so `~/.ssh`, `~/.aws`, `~/.npmrc`, browser profiles and `~/.bashrc` are out of
+reach. Outgoing TCP is blocked unless you pass `--sandbox-net` (UDP too on Linux 6.15+-class
+kernels with Landlock ABI 10). Only the scripts are sandboxed, not the package manager.
+Combine it with `--monitor` to see what a blocked script tried.
+
+The sandbox blocks rather than reports: a script that genuinely needs something outside
+those paths fails ("permission denied"). It needs Landlock (Linux 5.13+; 6.7+ to block the
+network) and refuses to run rather than silently doing less.
 
 ## Approvals and policy
 
@@ -122,7 +157,19 @@ in `.safe-install.json`. Commit it so your team shares approvals:
 ```
 
 An approval is pinned to a hash of the scripts **and the files they run**: if either
-changes, safe-install reports `SI-SCR-005` and asks again. Approved scripts run without a
+changes, safe-install reports `SI-SCR-005` and asks again. Two options loosen or tighten that:
+
+```sh
+safe-install approve sharp --trust provenance   # also future versions built by the same repository's CI
+safe-install approve '@corp/*' --trust provenance  # a whole scope (globs need provenance)
+safe-install approve esbuild --expires 90d      # ask again after 90 days
+```
+
+With `--trust provenance`, changed scripts are accepted only when the new version carries
+[npm provenance](https://docs.npmjs.com/generating-provenance-statements) from the
+repository recorded at approval time; a release published by hand (a stolen token) or built
+from another repository is not. safe-install reads the provenance the registry serves; it
+does not re-verify its Sigstore signature. Exact names take precedence over globs. Approved scripts run without a
 prompt, also in CI. A user-wide file with the same format lives in your config directory
 (`approve --global`); the project file wins on conflicts, and flags win over both.
 
@@ -132,10 +179,46 @@ safe-install approve esbuild      # approve and run now (--revoke, --global, --n
 safe-install add left-pad         # add packages through the same review
 safe-install explain SI-SCR-002   # what a rule means and what to do
 safe-install why ms               # the dependency chains that bring a package in
+safe-install scan                 # scan installed packages' code (also part of every install)
+safe-install cache info           # cache size per part; `cache clean` empties it
 ```
 
 `minReleaseAgeExclude` exempts packages from the release-age findings. The age passed to
 the package manager itself applies to every package.
+
+### Organization policy
+
+A security team can publish one policy for every repository: a JSON file in the same
+format, plus `blockPackages` (name globs that must never be used). Point safe-install at
+it with `SAFE_INSTALL_ORG_POLICY` or `"orgPolicy": "https://…/policy.json"` (or a path) in
+your user config, which win, or in `.safe-install.json`. `SAFE_INSTALL_ORG_POLICY_TOKEN` is
+sent as a Bearer token to that host only, and never to a URL named by a project file:
+anyone can change one in a pull request.
+
+```json
+{
+  "minReleaseAge": "7d",
+  "failOn": "medium",
+  "blockPackages": ["event-stream", "@evil/*"],
+  "allowScripts": { "esbuild": { "trust": "provenance", "repository": "https://github.com/evanw/esbuild" } }
+}
+```
+
+Projects build on it but cannot weaken it: blocked packages are reported as `SI-POL-001`
+(blocking) and their scripts never run, even if a project approved them; `minReleaseAge`
+and `failOn` are at least as strict as the organization's. The policy must be https; if it
+cannot be fetched, the last cached copy is used with a warning, and with no cache
+safe-install stops rather than running without it.
+
+### Use it instead of your package manager
+
+Commands that run no dependency code go to your project's package manager, with its output
+and exit code: your own scripts (`safe-install run build`, `test`, `start`, and script names
+directly for Yarn, pnpm and bun) and read-only or publishing commands (`ls`, `outdated`,
+`view`, `why`, `audit`, `pack`, `publish`, …). Install verbs (`i`, `install`, `add`, `ci`) take
+safe-install's own reviewed path; `uninstall` / `remove` run with install scripts forced off.
+Everything else is refused, with what to do instead: that includes `update`, `rebuild`,
+`exec`, `dlx`, `create`, `audit fix`, `dedupe`, and any command safe-install does not know.
 
 ### Use it every time (opt-in)
 
@@ -151,8 +234,10 @@ eval "$(safe-install shell-init bash)"   # add to ~/.bashrc or ~/.zshrc
 ```sh
 safe-install check                  # score every package in the lockfile
 safe-install check --fail-on medium # exit 1 at medium risk or worse
-safe-install check --format json    # or sarif; --sarif-file x.sarif writes SARIF alongside text
+safe-install check --format json    # or sarif, markdown; --sarif-file x.sarif writes SARIF alongside text
+safe-install check --summary-file summary.md   # plus a short Markdown summary (for PR comments)
 safe-install check --diff origin/main  # only packages new or changed since a git ref (or an old lockfile)
+safe-install check --diff origin/main --deep  # …and download, verify and scan their code
 ```
 
 New versions must be at least `--min-age` old (default `72h`; `0` disables). `install`
@@ -177,13 +262,21 @@ count one level below their advisory severity (`npm audit` covers those in depth
     working-directory: .   # where package.json and the lockfile are
     fail-on: high          # low, medium, high, block, none
     sarif: true            # upload to code scanning (needs security-events: write)
+    comment: true          # comment on the PR (needs pull-requests: write)
 ```
 
 The action downloads the release binary for the runner (checksum-verified; `version:`
 picks a release, `source` builds from the action's checkout) and fails the job when a
 package reaches `fail-on`. On pull requests it checks only the packages the PR adds or
-upgrades (`diff: auto`, comparing with the base branch); set `diff: none` to always check
-everything.
+upgrades (`diff: auto`, comparing with the base branch) and scans their code
+(`deep: auto`); set `diff: none` to always check everything.
+
+A short summary of the risky packages goes to the job summary on every run. With
+`comment: true`, it is also posted on the pull request, but only when there is something
+to report. Later runs edit that one comment instead of adding new ones. Package names and
+messages are shown as code, so a package can't put links, images or @mentions in the
+comment. On pull requests from forks the token is read-only, so the comment is skipped
+with a warning.
 
 ## Private registries
 
@@ -201,6 +294,14 @@ Scoped registries (`@corp:registry=…`) and per-host credentials (`_authToken`,
 A credential is sent only to the registry host and path it is configured for, never to
 OSV or npm's download counts API, and never printed. Tarballs from any configured
 registry count as the registry for `SI-INT-002`.
+
+## Cache
+
+Registry metadata, code-scan results and the organization policy are cached under
+`safe-install cache dir` (`SAFE_INSTALL_CACHE_DIR` moves it). The cache is capped at 1 GB
+(`SAFE_INSTALL_CACHE_MAX`, e.g. `500MB`): after each command, the least recently used files
+are removed once it is over the cap. `safe-install cache clean [registry|codescan|org]`
+empties it.
 
 ## Privacy
 

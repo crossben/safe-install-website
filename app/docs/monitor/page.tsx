@@ -38,6 +38,9 @@ export default function Page() {
       </DocsBlock>
       <DocsBlock section={section(page, 'kill')} />
       <DocsBlock section={section(page, 'limits')} />
+      <DocsBlock section={section(page, 'sandbox')}>
+        <Snippet id="sandbox.commands" />
+      </DocsBlock>
     </DocsShell>
   );
 }

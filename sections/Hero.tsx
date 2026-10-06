@@ -56,8 +56,13 @@ export function Hero() {
           </div>
 
           <div className="min-w-0 lg:col-span-7">
-            <HeroTerminal title={hero.terminalTitle} lines={hero.terminalLines} />
-            <p className="mt-3 font-mono text-[11px] text-muted">{hero.footnote}</p>
+            <HeroTerminal
+              title={hero.terminalTitle}
+              label={hero.scenariosLabel}
+              replayLabel={hero.replayLabel}
+              scenarios={hero.scenarios}
+            />
+            <p className="mt-1 font-mono text-[11px] text-muted">{hero.footnote}</p>
           </div>
         </div>
 

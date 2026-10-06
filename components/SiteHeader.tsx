@@ -1,5 +1,6 @@
 import { en } from '@/content/en';
 import { repo } from '@/content/facts';
+import { NavMenu } from './NavMenu';
 import { ThemeToggle } from './ui/ThemeToggle';
 
 const REPO_URL = `https://${repo.value}`;
@@ -22,19 +23,13 @@ export function SiteHeader() {
           </span>
         </a>
 
-        {/*
-          The full nav is hidden below `lg`. Eight links cannot fit at 360px
-          without either wrapping or scrolling sideways, so mobile gets the
-          footer list instead — no horizontal scroll, no hamburger that hides
-          most of the page behind a click.
-        */}
-        <nav aria-label="Sections" className="hidden lg:block">
+        <nav aria-label="Sections" className="hidden xl:block">
           <ul className="flex items-center gap-1">
             {en.nav.map((item) => (
               <li key={item.href}>
                 <a
                   href={item.href}
-                  className="rounded-md px-2.5 py-1.5 font-mono text-[13px] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+                  className="rounded-md px-2.5 py-1.5 font-mono text-[13px] whitespace-nowrap text-muted transition-colors hover:bg-surface-2 hover:text-ink"
                 >
                   {item.label}
                 </a>
@@ -44,6 +39,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex shrink-0 items-center gap-2">
+          <NavMenu />
           <a
             href={REPO_URL}
             target="_blank"

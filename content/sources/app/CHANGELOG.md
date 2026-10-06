@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.1
+
+### Added
+
+- A progress line (spinner and counter) while safe-install checks the registry, scans
+  package code or downloads for `--deep`. Interactive terminals only.
+- A notice when a newer release exists, with the update command for how you installed
+  safe-install (Homebrew, Scoop, `go install`, or the release page). Checked at most once a
+  day; never in CI, with `--ci` or `--offline`, or with `SAFE_INSTALL_NO_UPDATE_CHECK=1`.
+
 ## 0.2.0
 
 ### Added

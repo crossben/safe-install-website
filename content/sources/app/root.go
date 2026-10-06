@@ -178,8 +178,10 @@ func run(args []string, in io.Reader, out, errOut io.Writer) int {
 		}
 	}
 	root.SetArgs(args)
+	notice := checkForUpdate(args, errOut)
 	err := root.Execute()
 	pruneCache() // also after a failed command: the cache may have grown
+	notice()
 	if err != nil {
 		_, _ = fmt.Fprintln(errOut, "safe-install:", err)
 		var ee *exitError

@@ -257,7 +257,7 @@ count one level below their advisory severity (`npm audit` covers those in depth
 ## GitHub Action
 
 ```yaml
-- uses: crossben/safe-install@v0.2.0
+- uses: crossben/safe-install@v0.2.1
   with:
     working-directory: .   # where package.json and the lockfile are
     fail-on: high          # low, medium, high, block, none
@@ -297,10 +297,10 @@ registry count as the registry for `SI-INT-002`.
 
 ## Cache
 
-Registry metadata, code-scan results and the organization policy are cached under
+Registry metadata, code-scan results, the organization policy and the last update check are cached under
 `safe-install cache dir` (`SAFE_INSTALL_CACHE_DIR` moves it). The cache is capped at 1 GB
 (`SAFE_INSTALL_CACHE_MAX`, e.g. `500MB`): after each command, the least recently used files
-are removed once it is over the cap. `safe-install cache clean [registry|codescan|org]`
+are removed once it is over the cap. `safe-install cache clean [registry|codescan|org|update]`
 empties it.
 
 ## Privacy
@@ -309,6 +309,11 @@ No telemetry. `safe-install` talks to your configured package registry, the
 [OSV API](https://osv.dev) (package names and versions, for advisories) and npm's download
 counts API (only for rarely used packages with install scripts). `--offline` uses cached
 registry data only and skips both.
+
+At most once a day, in an interactive terminal, safe-install also asks GitHub's API for
+the latest release and prints a one-line notice with the right update command when there is
+a newer one. The request carries nothing about you or your project. It never runs in CI,
+with `--ci` or `--offline`, or when `SAFE_INSTALL_NO_UPDATE_CHECK=1` is set.
 
 ## Security
 

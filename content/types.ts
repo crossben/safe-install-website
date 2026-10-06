@@ -36,6 +36,15 @@ export type TerminalLine = {
   readonly tone?: 'prompt' | 'muted' | 'info' | 'warn' | 'danger' | 'ok';
 };
 
+export type TerminalScenario = {
+  readonly id: string;
+  /** Button label. */
+  readonly label: string;
+  /** One line under the terminal saying what the session shows. */
+  readonly caption: string;
+  readonly lines: readonly TerminalLine[];
+};
+
 export type ProblemPoint = {
   readonly title: string;
   readonly body: string;
@@ -148,6 +157,7 @@ export type SiteContent = {
     readonly ogAlt: string;
   };
   readonly nav: readonly NavItem[];
+  readonly menuLabel: string;
   readonly hero: {
     readonly promise: string;
     readonly subline: string;
@@ -158,7 +168,9 @@ export type SiteContent = {
       readonly samples: readonly CodeSample[];
     }[];
     readonly terminalTitle: string;
-    readonly terminalLines: readonly TerminalLine[];
+    readonly scenariosLabel: string;
+    readonly replayLabel: string;
+    readonly scenarios: readonly TerminalScenario[];
     readonly footnote: string;
   };
   readonly problem: {

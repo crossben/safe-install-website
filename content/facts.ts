@@ -867,11 +867,12 @@ gh attestation verify safe-install_linux_amd64.tar.gz --repo crossben/safe-insta
     'README — Verify a download',
   ),
   action: verbatim(
-    `- uses: crossben/safe-install@v0.1.0
+    `- uses: crossben/safe-install@v0.2.1
   with:
     working-directory: .   # where package.json and the lockfile are
     fail-on: high          # low, medium, high, block, none
-    sarif: true            # upload to code scanning (needs security-events: write)`,
+    sarif: true            # upload to code scanning (needs security-events: write)
+    comment: true          # comment on the PR (needs pull-requests: write)`,
     'README — GitHub Action',
   ),
   quarantine: fact(true, {

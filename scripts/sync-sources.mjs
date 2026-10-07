@@ -34,6 +34,7 @@ const SOURCES = [
   ['app/.goreleaser.yaml', 'app/goreleaser.yaml'],
   ['app/internal/analyze/explain.go', 'app/explain.go'],
   ['app/internal/cli/root.go', 'app/root.go'],
+  ['app/internal/cli/llm.md', 'app/llm.md'],
 ];
 
 const missing = SOURCES.filter(([from]) => !existsSync(path.join(workspace, from)));

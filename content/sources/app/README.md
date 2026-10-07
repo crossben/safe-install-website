@@ -229,6 +229,17 @@ Everything else is refused, with what to do instead: that includes `update`, `re
 eval "$(safe-install shell-init bash)"   # add to ~/.bashrc or ~/.zshrc
 ```
 
+## AI coding agents
+
+Coding agents (Claude Code, Codex, Cursor…) install packages too, and they shouldn't approve
+install scripts on your behalf. `safe-install llm` prints instructions written for them:
+install through safe-install, never approve scripts, report skipped ones to you, and
+how to read the results. Add them to your agent's instructions file:
+
+```sh
+safe-install llm >> AGENTS.md      # or CLAUDE.md, .cursorrules, …
+```
+
 ## Check without installing
 
 ```sh

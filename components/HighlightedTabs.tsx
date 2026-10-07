@@ -1,3 +1,4 @@
+import type { CodeLang } from '@/content/types';
 import { highlight } from '@/lib/highlight';
 import type { TabItem } from './ui/Tabs';
 import { Tabs } from './ui/Tabs';
@@ -14,7 +15,7 @@ export async function HighlightedTabs({
     label: string;
     samples: {
       label: string;
-      lang: 'bash' | 'powershell' | 'json' | 'yaml' | 'text';
+      lang: CodeLang;
       code: string;
     }[];
   }[];

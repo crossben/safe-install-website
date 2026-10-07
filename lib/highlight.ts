@@ -13,7 +13,7 @@ import type { CodeLang } from '@/content/types';
  * markup carries no redundant per-theme variables.
  */
 
-const LANGS = ['bash', 'powershell', 'json', 'yaml', 'text'] as const;
+const LANGS = ['bash', 'powershell', 'json', 'yaml', 'markdown', 'text'] as const;
 
 let highlighterPromise: Promise<Highlighter> | null = null;
 

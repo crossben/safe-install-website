@@ -10,7 +10,7 @@
  */
 
 /** Languages the inline code blocks are highlighted with. */
-export type CodeLang = 'bash' | 'powershell' | 'json' | 'yaml' | 'text';
+export type CodeLang = 'bash' | 'powershell' | 'json' | 'yaml' | 'text' | 'markdown';
 
 export type CodeSample = {
   readonly label: string;
@@ -186,6 +186,18 @@ export type SiteContent = {
     readonly lede: string;
     readonly steps: readonly Step[];
     readonly note: string;
+  };
+  readonly agents: {
+    readonly eyebrow: string;
+    readonly heading: string;
+    readonly lede: string;
+    readonly rules: readonly string[];
+    readonly commandHeading: string;
+    readonly command: string;
+    readonly commandNote: string;
+    readonly promptLabel: string;
+    readonly copyLabel: string;
+    readonly llmsTxtNote: string;
   };
   readonly checks: {
     readonly eyebrow: string;

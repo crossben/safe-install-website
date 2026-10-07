@@ -6,7 +6,7 @@ import type { SiteContent } from './types';
  * Values that are *facts* (rule IDs, exit codes, command strings) are imported
  * from `facts.ts` instead of being written here — see the JSX comments below.
  */
-import { distribution, globalFlags, repo } from './facts';
+import { agentsCommand, distribution, globalFlags, repo } from './facts';
 
 /** Derived from the cited module path so there is one place to change it. */
 const REPO_URL = `https://${repo.value}`;
@@ -26,6 +26,7 @@ export const en: SiteContent = {
     { label: 'Rules', href: '/#checks' },
     { label: 'Monitor', href: '/#monitor' },
     { label: 'CI', href: '/#ci' },
+    { label: 'AI agents', href: '/#agents' },
     { label: 'Install', href: '/#install' },
     { label: 'Docs', href: '/docs/' },
   ],
@@ -268,6 +269,25 @@ export const en: SiteContent = {
       },
     ],
     note: 'Every step is a plain CLI invocation: nothing is left running afterwards, and only registry metadata is cached between runs.',
+  },
+
+  agents: {
+    eyebrow: 'AI coding agents',
+    heading: 'Your agent installs packages too.',
+    lede: 'Claude Code, Codex, Cursor and friends run npm install all day, and they should not decide which install scripts get to run. Give them these instructions: they install through safe-install, never approve a script themselves, and bring the decision back to you.',
+    rules: [
+      'Installs and adds go through safe-install, never npm directly.',
+      'Never approve scripts, never --force or --yes, never edit allowScripts.',
+      'Skipped scripts are reported to you, with the command to approve them yourself.',
+      'Refused commands and high-risk findings stop the agent instead of being worked around.',
+    ],
+    commandHeading: 'Add them to your project',
+    command: agentsCommand.value,
+    commandNote:
+      'Or CLAUDE.md, .cursorrules, or wherever your agent reads its instructions. The text matches the safe-install version you run.',
+    promptLabel: 'safe-install llm',
+    copyLabel: 'Copy prompt',
+    llmsTxtNote: 'the same text, for agents that fetch docs from the web.',
   },
 
   checks: {

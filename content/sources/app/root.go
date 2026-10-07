@@ -73,7 +73,10 @@ func newRootCmd() *cobra.Command {
 	pf.StringVar(&g.minAge, "min-age", "72h", "minimum release age, e.g. 72h or 3d; 0 disables")
 
 	root.AddCommand(newInstallCmd(&g), newAddCmd(&g), newCheckCmd(&g), newScriptsCmd(&g),
-		newApproveCmd(&g), newWhyCmd(&g), newScanCmd(&g), newCacheCmd(), newExplainCmd(), newShellInitCmd(), newVersionCmd())
+		newApproveCmd(&g), newWhyCmd(&g), newScanCmd(&g), newCacheCmd(), newExplainCmd(), newShellInitCmd(), newVersionCmd(), newLLMCmd())
+	root.Version = version
+	root.SetVersionTemplate(versionLine() + "\n")
+	root.Flags().BoolP("version", "v", false, "print version information")
 	return root
 }
 

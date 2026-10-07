@@ -10,6 +10,7 @@ import { WhyGo } from '@/sections/WhyGo';
 import { Monitor } from '@/sections/Monitor';
 import { CI } from '@/sections/CI';
 import { Install } from '@/sections/Install';
+import { Agents } from '@/sections/Agents';
 
 export default function Page() {
   return (
@@ -28,6 +29,8 @@ export default function Page() {
         <Monitor />
         <div className="hairline" />
         <CI />
+        <Agents />
+        <div className="hairline" />
         <Install />
       </main>
       <SiteFooter />

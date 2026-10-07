@@ -881,3 +881,9 @@ gh attestation verify safe-install_linux_amd64.tar.gz --repo crossben/safe-insta
     quote: 'On macOS, Homebrew keeps the quarantine flag on the (not yet notarized) binary',
   }),
 } as const;
+
+export const agentsCommand = fact('safe-install llm >> AGENTS.md', {
+  section: 'README — AI coding agents',
+  file: README,
+  quote: 'safe-install llm >> AGENTS.md',
+});

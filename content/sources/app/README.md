@@ -268,7 +268,7 @@ count one level below their advisory severity (`npm audit` covers those in depth
 ## GitHub Action
 
 ```yaml
-- uses: crossben/safe-install@v0.2.1
+- uses: crossben/safe-install@v0.2.2
   with:
     working-directory: .   # where package.json and the lockfile are
     fail-on: high          # low, medium, high, block, none

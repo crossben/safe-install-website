@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.2
+
+### Added
+
+- `safe-install llm` prints instructions for AI coding agents (install through
+  safe-install, never approve scripts, report skipped ones to a human). Add them with
+  `safe-install llm >> AGENTS.md`.
+- `safe-install --version` (and `-v`), the same as `safe-install version`.
+
 ## 0.2.1
 
 ### Added

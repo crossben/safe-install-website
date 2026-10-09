@@ -5,6 +5,23 @@ export function SiteFooter() {
   return (
     <footer className="mt-8 border-t border-line">
       <div className="shell py-14">
+      {/* Next project: the three open-source projects link to each other in a ring. */}
+      <div className="mb-10">
+        <a
+          href="https://yoonpay.benhattab.pro"
+          className="group flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 rounded-lg border border-line px-5 py-4 transition-colors hover:border-accent"
+        >
+          <span className="font-mono text-xs uppercase tracking-[0.18em] text-muted">
+            Next project
+          </span>
+          <span className="flex-1 text-sm">
+            <span className="font-medium transition-colors group-hover:text-accent">Yoon</span>{" "}
+            <span className="text-muted">{"— one API in front of Africa's payment providers"}</span>
+          </span>
+          <span aria-hidden="true" className="text-muted transition-colors group-hover:text-accent">→</span>
+        </a>
+      </div>
+
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <p className="flex items-center gap-2 font-mono text-sm font-medium">

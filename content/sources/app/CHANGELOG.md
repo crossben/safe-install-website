@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.3
+
+### Added
+
+- `safe-install scripts --format json` and `safe-install explain [rule] --format json`, for
+  tools such as editor extensions. `scripts` used to ignore `--format`; an unsupported
+  format is now an error.
+
 ## 0.2.2
 
 ### Added

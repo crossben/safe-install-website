@@ -663,6 +663,14 @@ export const en: SiteContent = {
           ],
         },
         {
+          id: 'editor',
+          title: 'In your editor',
+          body: [
+            'safe-install for VS Code (also Cursor, Windsurf and VSCodium) shows the same results while you edit: risky dependencies are marked in `package.json` with an explanation on hover, an Install Scripts view lists what is waiting for approval, and approving runs `safe-install approve` in a terminal you can see. High-risk scripts are never approved from the editor.',
+            'It runs the CLI you have installed (0.2.3 or later) and adds no checks of its own, no network requests and no telemetry. Search for "safe-install" in the Extensions view.',
+          ],
+        },
+        {
           id: 'shell-init',
           title: 'Use it every time',
           body: [

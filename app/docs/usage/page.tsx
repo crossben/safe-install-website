@@ -59,6 +59,7 @@ export default function Page() {
         <Snippet id="usage.commands" />
       </DocsBlock>
       <DocsBlock section={section(page, 'passthrough')} />
+      <DocsBlock section={section(page, 'editor')} />
       <DocsBlock section={section(page, 'shell-init')}>
         <Snippet id="usage.shellInit" />
       </DocsBlock>

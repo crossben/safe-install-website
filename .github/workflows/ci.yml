@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 24
+      # Dogfooding: check the site's own dependencies with safe-install (on pull
+      # requests, only the ones the PR adds or upgrades, and their code)...
+      - name: Check dependencies
+        uses: crossben/safe-install@affeb249c75a587722ce9cd17129ece07bf401dc # v0.2.3
+        with:
+          fail-on: high
+      # ...and install them through it: lifecycle scripts off, none approved.
+      # The action left the verified binary in $RUNNER_TEMP.
+      - name: Install with safe-install
+        run: '"$RUNNER_TEMP/safe-install" install --frozen-lockfile --ci'
+        env:
+          SAFE_INSTALL_NO_UPDATE_CHECK: '1'
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run build
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - run: docker build -t safe-install-site .

@@ -6,18 +6,18 @@ pnpm / Yarn / bun install scripts before they run.
 A landing page plus developer docs under `/docs/`, fully static, and it builds on its own:
 
 ```bash
-npm ci
+safe-install install --frozen-lockfile   # dogfooding: no dependency of this site needs an install script
 npm run build   # emits out/
 ```
 
-Requires Node `>=24` (see `.nvmrc`). The final image ships no Node.js at all.
+Requires Node `>=24` (see `.nvmrc`) and [safe-install](https://github.com/crossben/safe-install#get-it): the site installs its own dependencies through the tool it documents. `npm ci --ignore-scripts` works too. The final image ships no Node.js at all.
 
 ---
 
 ## Develop
 
 ```bash
-npm ci
+safe-install install --frozen-lockfile
 npm run dev      # http://localhost:3000
 ```
 

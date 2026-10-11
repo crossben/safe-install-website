@@ -63,6 +63,7 @@ export type RuleFamily =
   | 'policy'
   | 'vulns'
   | 'code'
+  | 'builds'
   | 'monitor';
 
 export type Rule = {
@@ -75,7 +76,8 @@ export type Rule = {
 };
 
 export type PackageManager = {
-  readonly id: 'npm' | 'pnpm' | 'yarn-classic' | 'yarn-berry' | 'bun';
+  readonly id:
+    'npm' | 'pnpm' | 'yarn-classic' | 'yarn-berry' | 'bun' | 'uv' | 'python-check' | 'composer';
   readonly name: string;
   readonly lockfile: string;
   readonly disableScripts: string;
@@ -298,6 +300,30 @@ export const packageManagers: readonly PackageManager[] = [
     RUN_IN_DIR,
     '| bun | `bun.lock` | `bun install --ignore-scripts` | `npm run <stage> --ignore-scripts` in the package directory |',
   ),
+  pm(
+    'uv',
+    'uv (Python)',
+    'uv.lock',
+    'uv sync --locked with every unapproved package in --no-build-package',
+    'uv builds only the approved source distributions',
+    '| uv | `uv.lock` | `uv sync --locked` with every unapproved package in `--no-build-package` | uv builds only the approved source distributions |',
+  ),
+  pm(
+    'python-check',
+    'pip, Poetry, Pipenv',
+    'requirements.txt, poetry.lock, Pipfile.lock',
+    'check and why only (installing: not yet)',
+    '',
+    '| pip, Poetry, Pipenv | `requirements.txt`, `poetry.lock`, `Pipfile.lock` | `check` and `why` only (installing: not yet) | |',
+  ),
+  pm(
+    'composer',
+    'Composer (PHP)',
+    'composer.lock',
+    'composer install --no-scripts',
+    'only approved plugins load (allow-plugins)',
+    '| Composer | `composer.lock` | `composer install --no-scripts` | only approved plugins load (`allow-plugins`) |',
+  ),
 ];
 
 export const corepackPinned = fact(true, {
@@ -455,6 +481,34 @@ export const rules: readonly Rule[] = [
     'Package code is obfuscated (≥100 `_0x…` names) or evals a ≥4 KB encoded blob',
     'medium',
     '| SI-CODE-003 | Package code is obfuscated (≥100 `_0x…` names) or evals a ≥4 KB encoded blob | medium |',
+  ),
+  rule(
+    'SI-BLD-001',
+    'builds',
+    'Python: no wheel, so installing builds the source distribution (runs its build code)',
+    'medium',
+    '| SI-BLD-001 | Python: no wheel, so installing builds the source distribution (runs its build code) | medium |',
+  ),
+  rule(
+    'SI-BLD-002',
+    'builds',
+    'Python: build code (setup.py, build hooks) downloads and runs, evaluates fetched or encoded code, or reads credentials',
+    'block',
+    '| SI-BLD-002 | Python: build code (setup.py, build hooks) downloads and runs, evaluates fetched or encoded code, or reads credentials | block / high |',
+  ),
+  rule(
+    'SI-PTH-001',
+    'builds',
+    'Python: installs a .pth file whose lines run code at every Python start',
+    'high',
+    '| SI-PTH-001 | Python: installs a .pth file whose lines run code at every Python start | medium / high |',
+  ),
+  rule(
+    'SI-PLG-001',
+    'builds',
+    'Composer plugin: its code runs inside Composer on every command',
+    'medium',
+    '| SI-PLG-001 | Composer plugin: its code runs inside Composer on every command | medium |',
   ),
   rule(
     'SI-MON-001',
@@ -867,7 +921,7 @@ gh attestation verify safe-install_linux_amd64.tar.gz --repo crossben/safe-insta
     'README — Verify a download',
   ),
   action: verbatim(
-    `- uses: crossben/safe-install@v0.2.3
+    `- uses: crossben/safe-install@v0.3.0
   with:
     working-directory: .   # where package.json and the lockfile are
     fail-on: high          # low, medium, high, block, none

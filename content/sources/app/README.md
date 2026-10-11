@@ -6,6 +6,9 @@
 It analyzes your whole dependency tree from the lockfile, installs with lifecycle scripts
 disabled, shows you every package that wants to run a script, and runs only the ones you
 approved. Linux, macOS and Windows; single static binary.
+It also covers **Python** (uv, pip, Poetry, Pipenv: source builds need approval) and
+**PHP** (Composer: plugins need approval); see [Python](#python-preview) and
+[PHP / Composer](#php--composer-preview).
 
 ## How it works
 
@@ -24,6 +27,9 @@ approved. Linux, macOS and Windows; single static binary.
 | Yarn classic | `yarn.lock` (v1) | `yarn install --ignore-scripts` | `npm run <stage> --ignore-scripts` in the package directory |
 | Yarn berry | `yarn.lock` (v2+) | `yarn install --mode=skip-build` | `npm run <stage> --ignore-scripts` in `.yarn/unplugged`, with `.pnp.cjs` preloaded |
 | bun | `bun.lock` | `bun install --ignore-scripts` | `npm run <stage> --ignore-scripts` in the package directory |
+| uv | `uv.lock` | `uv sync --locked` with every unapproved package in `--no-build-package` | uv builds only the approved source distributions |
+| pip, Poetry, Pipenv | `requirements.txt`, `poetry.lock`, `Pipfile.lock` | `check` and `why` only (installing: not yet) | |
+| Composer | `composer.lock` | `composer install --no-scripts` | only approved plugins load (`allow-plugins`) |
 
 The package manager is detected from the lockfile, then the `packageManager` field in
 `package.json` (`--pm` overrides both). When `packageManager` pins pnpm or Yarn,
@@ -240,6 +246,87 @@ how to read the results. Add them to your agent's instructions file:
 safe-install llm >> AGENTS.md      # or CLAUDE.md, .cursorrules, …
 ```
 
+## Python (preview)
+
+`safe-install check` and `safe-install why` work on Python projects too: `uv.lock`,
+`poetry.lock`, `Pipfile.lock` and pinned `requirements.txt` (with `--hash` lines and pip-compile
+or `uv export` "via" comments). Packages are checked against PyPI and OSV with the same rules:
+known malware and vulnerabilities, yanked versions, fresh releases (`--min-age`), names that
+imitate popular PyPI packages, and lockfile hashes or download URLs that PyPI does not serve.
+
+```sh
+safe-install check            # in a folder with uv.lock, poetry.lock, Pipfile.lock or requirements.txt
+safe-install why urllib3      # which dependencies bring it in
+safe-install check --deep     # also download, verify and scan each package's code
+```
+
+Python-specific checks: a recent release that dropped the PyPI Trusted Publishing provenance
+its previous release had (`SI-REC-002`), packages with no wheel, whose build code runs on
+install (`SI-BLD-001`), and with `--deep`, build code (`setup.py`, build hooks) that downloads,
+evaluates or reads secrets (`SI-BLD-002`), `.pth` files that run code at every Python start
+(`SI-PTH-001`), and the code-scan rules applied to Python source. Archives are verified against
+PyPI's sha256 and the lockfile's hashes, and scanned in memory.
+
+**Installing with uv.** In a project with `uv.lock`, `safe-install install` and
+`safe-install add` install from wheels only: building a source distribution runs its build
+code, so a package that has to be built is analyzed first (registry rules and a scan of its
+build code) and built only once you approve it, pinned to that sdist's sha256. Every other
+package is passed to uv as `--no-build-package`, whatever platform you are on.
+
+```sh
+safe-install install          # uv lock (if needed), then uv sync --locked, wheels only
+safe-install add httpx        # uv add, refused if it resolves a version younger than --min-age
+safe-install scan             # scan the code installed in .venv
+```
+
+The release-age gate checks every new or changed version against PyPI and, if one is too
+fresh, restores `pyproject.toml` and `uv.lock` and installs nothing. (uv's own
+`--exclude-newer` is not used: uv writes it into `uv.lock`.) After installing, `.pth` files
+that run code at every Python start are reported with the package that installed them. Your
+own project is still installed by uv as usual. pip, Poetry and Pipenv projects can be
+checked; installing them is not supported yet.
+
+Packages from other indexes configured for the project (`[[tool.uv.index]]`, `uv.toml`,
+Pipfile sources, `--index-url` lines, `UV_*`/`PIP_*` variables) are not looked up on PyPI and
+are listed as skipped; safe-install never contacts those indexes. The PyPI popularity list
+comes from [ecosyste.ms](https://ecosyste.ms) (data CC BY-SA 4.0).
+
+## PHP / Composer (preview)
+
+`safe-install check` and `safe-install why` work on Composer projects (`composer.lock`),
+against Packagist and OSV: malware and vulnerabilities, abandoned packages (with Packagist's
+suggested replacement), fresh releases (when Packagist first saw them), names that imitate
+popular packages (`symfoni/console`), and **Composer plugins** (`SI-PLG-001`), whose code runs
+inside Composer on every command. Composer dists from GitHub carry no checksum, so integrity
+is anchored on the commit: the lockfile must pin the commit Packagist serves for that version
+(`SI-INT-001`). `check --deep` downloads each dist (the zipball of exactly that commit) and
+scans its PHP code, including `eval(gzinflate(base64_decode(…)))`-style payloads.
+
+```sh
+safe-install check --deep     # in a folder with composer.lock
+safe-install why psr/log
+```
+
+**Installing with Composer.** Dependencies' scripts never run in Composer; what does is
+**plugins**. `safe-install install` runs `composer install --no-scripts` (your project's own
+scripts are reported, not run) with only the plugins you approved enabled, each pinned to its
+commit. It points Composer at a temporary copy of `composer.json` whose `allow-plugins` lists
+exactly those plugins, even if your own `composer.json` allows more, so your files are never
+edited. `safe-install add` refuses versions younger than `--min-age` and restores
+`composer.json` and `composer.lock`. `safe-install scan` scans the PHP code in `vendor/`.
+
+```sh
+safe-install install                        # composer install, scripts off, approved plugins only
+safe-install approve php-http/discovery     # review and approve a plugin (pinned to its commit)
+safe-install add symfony/http-client        # composer require, with the release-age gate
+```
+
+`safe-install approve` works the same way for Python: it approves building a package from
+source, pinned to that sdist's sha256.
+
+Packages from repositories listed in `composer.json` are skipped, never contacted. The Packagist popularity list comes from
+[ecosyste.ms](https://ecosyste.ms) (data CC BY-SA 4.0).
+
 ## Editor extension
 
 **safe-install for VS Code** (also Cursor, Windsurf and VSCodium) shows the same results in
@@ -277,7 +364,7 @@ count one level below their advisory severity (`npm audit` covers those in depth
 ## GitHub Action
 
 ```yaml
-- uses: crossben/safe-install@v0.2.3
+- uses: crossben/safe-install@v0.3.0
   with:
     working-directory: .   # where package.json and the lockfile are
     fail-on: high          # low, medium, high, block, none

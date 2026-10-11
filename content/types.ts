@@ -67,6 +67,7 @@ export type FamilyCopy = {
     | 'policy'
     | 'vulns'
     | 'code'
+    | 'builds'
     | 'monitor';
   readonly title: string;
   readonly blurb: string;

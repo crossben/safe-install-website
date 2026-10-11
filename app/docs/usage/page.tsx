@@ -59,6 +59,10 @@ export default function Page() {
         <Snippet id="usage.commands" />
       </DocsBlock>
       <DocsBlock section={section(page, 'passthrough')} />
+      <DocsBlock section={section(page, 'python-php')}>
+        <Snippet id="python.commands" />
+        <Snippet id="composer.commands" />
+      </DocsBlock>
       <DocsBlock section={section(page, 'editor')} />
       <DocsBlock section={section(page, 'shell-init')}>
         <Snippet id="usage.shellInit" />

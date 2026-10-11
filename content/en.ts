@@ -17,7 +17,7 @@ export const en: SiteContent = {
   meta: {
     title: 'safe-install — Install dependencies. Not malware.',
     description:
-      'safe-install is an open-source CLI that stops malicious npm, pnpm, Yarn and bun install scripts before they run. Linux, macOS and Windows. Apache-2.0.',
+      'safe-install is an open-source CLI that stops malicious npm, pnpm, Yarn and bun install scripts, Python source builds and Composer plugins before they run. Linux, macOS and Windows. Apache-2.0.',
     ogAlt: 'safe-install — install dependencies, not malware',
   },
 
@@ -35,7 +35,7 @@ export const en: SiteContent = {
   hero: {
     promise: 'Install dependencies. Not malware.',
     subline:
-      'A drop-in replacement for npm, pnpm, Yarn and bun that installs your dependency tree with every lifecycle script switched off — then shows you the ones that wanted to run, and asks before executing a single one.',
+      'A drop-in replacement for npm, pnpm, Yarn and bun (and uv and Composer) that installs your dependency tree with every lifecycle script switched off — then shows you the ones that wanted to run, and asks before executing a single one.',
     primaryCta: { label: 'View on GitHub', href: REPO_URL, external: true },
     secondaryCta: { label: 'How it works', href: '/#how-it-works' },
 
@@ -292,7 +292,7 @@ export const en: SiteContent = {
 
   checks: {
     eyebrow: 'What it checks',
-    heading: 'Twenty-two rules, nine questions.',
+    heading: 'Twenty-six rules, ten questions.',
     lede: 'Every finding carries a rule ID, a severity and the evidence that triggered it — so you can look up exactly why something was flagged and decide for yourself.',
     families: [
       {
@@ -343,6 +343,12 @@ export const en: SiteContent = {
           'Malware also hides in the code a package loads, not just its install scripts. scan reads installed packages, and check --deep downloads and reads the ones a pull request adds.',
       },
       {
+        id: 'builds',
+        title: 'What runs while installing? (Python, PHP)',
+        blurb:
+          'Python packages without a wheel run their build code on install, .pth files run at every Python start, and Composer plugins run inside Composer. Each needs your approval.',
+      },
+      {
         id: 'monitor',
         title: 'What did the script actually do? (Linux)',
         blurb:
@@ -383,8 +389,8 @@ export const en: SiteContent = {
 
   packageManagers: {
     eyebrow: 'Works with your package manager',
-    heading: 'One interface, five adapters.',
-    lede: 'safe-install does not reimplement npm. It drives whichever package manager your project already uses, with scripts switched off, then runs exactly the approved lifecycle stages itself, the same way for all five.',
+    heading: 'One interface, every adapter.',
+    lede: 'safe-install does not reimplement your package manager. It drives whichever one your project already uses with nothing running (scripts off, Python wheels only, Composer plugins off), then allows exactly what you approved: install scripts, source builds, plugins.',
     columns: [
       { key: 'name', label: 'Package manager' },
       { key: 'lockfile', label: 'Lockfile' },
@@ -660,6 +666,14 @@ export const en: SiteContent = {
           body: [
             'Commands that run no dependency code go straight to your package manager, with its output and exit code: your own scripts (`safe-install run build`, `test`, `start`) and read-only or publishing commands such as `ls`, `outdated`, `view`, `audit` and `publish`.',
             'Install verbs (`i`, `install`, `add`, `ci`) take safe-install’s reviewed path, and `uninstall` runs with install scripts forced off. Everything else is refused with what to do instead, including `update`, `rebuild`, `exec`, `dlx`, `create`, `audit fix`, `init <initializer>` and any command safe-install does not know.',
+          ],
+        },
+        {
+          id: 'python-php',
+          title: 'Python and PHP',
+          body: [
+            'Python projects (uv, pip, Poetry, Pipenv) and Composer projects are checked against PyPI, Packagist and OSV with the same rules, plus their own: a Python package without a wheel runs its build code on install (`SI-BLD-001`, and with `--deep`, `SI-BLD-002`), `.pth` files run code at every Python start (`SI-PTH-001`), and Composer plugins run inside Composer (`SI-PLG-001`).',
+            'With uv, `safe-install install` installs from wheels only and builds a package from source only once you approve it, pinned to that source distribution. With Composer, scripts stay off and only the plugins you approved load, pinned to their commit; your `composer.json` is never edited. In both, `add` refuses versions younger than `--min-age` and restores your files.',
           ],
         },
         {

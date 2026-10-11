@@ -143,6 +143,10 @@ capped at 100; levels: `low <30`, `medium 30–59`, `high ≥60`, plus some rule
 | SI-CODE-001 | Package code (not a script) downloads and executes: exec/spawn of a downloader, or eval/Function within 400 bytes after a network call | high |
 | SI-CODE-002 | Package code reads credentials within 1500 bytes of a network send | high |
 | SI-CODE-003 | Package code is obfuscated (≥100 `_0x…` names) or evals a ≥4 KB encoded blob | medium |
+| SI-BLD-001 | Python: no wheel, so installing builds the source distribution (runs its build code) | medium |
+| SI-BLD-002 | Python: build code (setup.py, build hooks) downloads and runs, evaluates fetched or encoded code, or reads credentials | block / high |
+| SI-PTH-001 | Python: installs a .pth file whose lines run code at every Python start | medium / high |
+| SI-PLG-001 | Composer plugin: its code runs inside Composer on every command | medium |
 | SI-MON-001 | Runtime monitor: script connected to the network (DNS ignored) | medium |
 | SI-MON-002 | Runtime monitor: script ran a network tool (curl, wget, nc, ssh…) | medium |
 | SI-MON-003 | Runtime monitor: script read credentials (`~/.ssh`, `~/.npmrc`, cloud, browser data) | high |

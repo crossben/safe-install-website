@@ -17,6 +17,11 @@ export const DOC_SNIPPETS = {
   'policy.org': { file: README, marker: '"blockPackages"' },
   'check.registries': { file: README, marker: '@corp:registry=' },
   'sandbox.commands': { file: README, marker: 'safe-install install --sandbox ' },
+  'python.commands': { file: README, marker: 'uv lock (if needed), then uv sync --locked' },
+  'composer.commands': {
+    file: README,
+    marker: 'composer install, scripts off, approved plugins only',
+  },
   'check.commands': { file: README, marker: 'safe-install check --fail-on medium' },
   'ci.action': { file: README, marker: 'uses: crossben/safe-install@' },
   'monitor.commands': { file: README, marker: 'safe-install install --monitor=kill' },

@@ -1,5 +1,5 @@
 name: safe-install check
-description: Check a JavaScript project's dependencies for supply-chain risks (npm, pnpm, yarn, bun)
+description: Check a project's dependencies for supply-chain risks (npm, pnpm, Yarn, bun, uv, pip, Poetry, Composer)
 author: crossben
 branding:
   icon: shield
@@ -7,7 +7,7 @@ branding:
 
 inputs:
   working-directory:
-    description: Directory containing package.json and the lockfile
+    description: Directory containing the project's lockfile (package-lock.json, uv.lock, composer.lock…)
     default: .
   fail-on:
     description: Fail when a package reaches this level (low, medium, high, block, none)

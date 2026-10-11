@@ -1,5 +1,51 @@
 # Changelog
 
+## 0.3.0
+
+### Added
+
+- **Python (preview): `check` and `why`** for `uv.lock`, `poetry.lock`, `Pipfile.lock` and
+  pinned `requirements.txt`, against PyPI and OSV: malware and vulnerabilities, yanked
+  versions, fresh releases, typosquats of popular PyPI packages (list from ecosyste.ms,
+  CC BY-SA 4.0), and lockfile hashes or file URLs that PyPI does not serve (SI-INT-001/002).
+- **Python provenance** (`SI-REC-002`): a recent release without the PEP 740 attestation
+  (Trusted Publishing) its previous release had.
+- **Python build code**: `SI-BLD-001` (no wheel, so installing runs build code); with
+  `check --deep`, `SI-BLD-002` (build code that downloads, evaluates or reads secrets),
+  `SI-PTH-001` (`.pth` files that run code at startup) and `SI-CODE-001..003` for Python.
+- **Python installs with uv**: `install`, `add` and `scan` for `uv.lock` projects. Wheels
+  only; packages that must build from source are analyzed and need approval, pinned to the
+  sdist's sha256. New versions younger than `--min-age` are refused and `pyproject.toml`
+  and `uv.lock` restored. `.pth` files that run code are reported after install.
+- Packages from configured non-PyPI indexes are skipped (never contacted) instead of being
+  reported as unpublished.
+- **PHP / Composer (preview): `check` and `why`** for `composer.lock` against Packagist and
+  OSV: abandoned packages, fresh releases, typosquats of popular Composer packages, commit
+  integrity (`SI-INT-001`), Composer plugins (`SI-PLG-001`), and with `--deep`, a scan of
+  each dist's PHP code.
+- **Composer installs**: `install`, `add` and `scan` for `composer.lock` projects. Scripts
+  off; only approved plugins load (pinned to their commit), through a temporary
+  `composer.json` copy, so the project's files are never edited; fresh versions refused on
+  `add` with an exact restore.
+- `approve` works for Python (approve a source build, pinned to the sdist's sha256) and
+  Composer (approve a plugin, pinned to its commit).
+- Advisories published by several databases (GitHub's GHSA and PyPI's PYSEC) are reported
+  once.
+
+### Changed
+
+- Python (uv, pip, Poetry, Pipenv) and PHP (Composer) projects are recognized and get a
+  clear "not supported yet" message instead of "no package.json". Groundwork for Python and
+  PHP support: packages now carry their ecosystem, OSV lookups use it, and rules declare
+  which ecosystems they apply to. Nothing changes for npm, pnpm, Yarn and bun projects.
+
+### Fixed
+
+- `check` no longer fails at random on a cold cache in large projects ("context deadline
+  exceeded", exit 3). Registry metadata can be tens of megabytes (`next` is about 30 MB)
+  and downloads in parallel; the client now times out on a stalled connection rather than
+  on download size, and retries timeouts, dropped connections, 5xx and 429 twice.
+
 ## 0.2.3
 
 ### Added
